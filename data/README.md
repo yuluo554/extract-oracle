@@ -1,0 +1,267 @@
+# data — 依据查证、数据计划与数值口径
+
+**基准日**：2026-10-21。
+**代理实际检索窗口**：**2026-10-19T18:35Z–19:10Z**（与基准日相差约 1 天；星数与 `total_count` 均为该窗口快照，复跑请先记录当次时间）。
+**实测环境（原样记录，不省略）**：Windows 10.0.26200.8246 / NTFS（`LongPathsEnabled=1`）、Python 3.12.10（`unicodedata` 15.0.0）、7-Zip 25.01、Info-ZIP UnZip 6.00（Cygwin 构建，`UNICODE_SUPPORT`）、zipinfo 3.00、Perl `zipdetails`。
+**三态语义**：✅ 已核对（可直连 / 快照已存 / 可复现）；⬜ 未验证或软论据（登记路径与阻断原因，**不得写成承诺**）。
+
+---
+
+## 1. 依据查证记录
+
+### 1.1 竞品与同题仓库（⬜ 软论据，快照）
+
+**窗口 2026-10-19T18:35Z–19:10Z**，`gh api search/repositories`（`in:name,description`）：
+
+| 检索式 | `total_count` | 头部项目 | 状态 |
+|---|---|---|---|
+| `cross-platform filename validation` | 3 | pathologize 78★、namefix 10★ | ✅ 快照 |
+| `filename sanitizer` | 163 | node-sanitize-filename 371★、pathvalidate 296★、zaru 230★ | ✅ 快照 |
+| `filename sanitizer windows` | 15 | 最高 11★ | ✅ 快照 |
+| `unicode normalization filename` | 20 | jaso 44★ | ✅ 快照 |
+| `case insensitive filename collision` | **3** | perl-File-Find-CaseCollide **0★** | ✅ 快照 |
+| `zip filename encoding` | 19 | sjisunzip 165★、ZipUnicode 54★ | ✅ 快照 |
+| `zip preflight` | **18** | archive-preflight 1★、zip-preflight 0★×2 | ✅ 快照 |
+| `zip local header central directory` | 9 | **ronomon/zip 258★（2020-07 后停更）**、zipwalk 13★ | ✅ 快照 |
+| `zip parser differential` | 1 | 0★ | ✅ 快照 |
+| `zip audit` | 147 | 全部无关 | ✅ 快照 |
+| `archive integrity checker` | 6 | 全部 ≤6★ | ✅ 快照 |
+| `epubcheck` | 138 | w3c/epubcheck 1978★ | ✅ 快照 |
+| `odf validator` | 10 | 11★ | ✅ 快照 |
+
+**同期 4 个同题仓库（红海证据，必须随题记录）**：
+
+| 仓库 | 星数 | 备注 |
+|---|---|---|
+| `cloudwallker/archive-preflight` | 1★ | `Policies` 表自认 "casefold is an **approximation**"、"Native NTFS/APFS comparison tables… **require host testing**" |
+| `Hhhxsss/zip-preflight` | 0★ | `docs/rules.md` 明写不做 "local-header comparison"、"overlapping-entry detection"，"**the tool does not guess encodings**" |
+| `mehul82099/zip-preflight` | 0★ | — |
+| `mytestapp20261001-collab/zip-member-preflight` | 0★ | — |
+
+> 判读（软论据，禁止写"空白/首创"）：**功能不空白**——两周内 4 个同题仓库，其中 2 个功能相当完整（含 CI、pre-commit hook、Windows 右键菜单、HTML 报告）。本题只押它们**明写不做**的三处：双头差分与重叠、编码推断与 Unicode path extra field、真实文件系统折叠表。
+
+### 1.2 需求证据（原话，✅ 已核对）
+
+| 编号 | 原话（节选） | 出处 | 状态 |
+|---|---|---|---|
+| D1 | "I watched a coworker's head explode when he tried to extract an archive (from a 'Nix environment) on his Windows machine and was **indignant about getting duplicate filename errors**." | HN · `https://news.ycombinator.com/item?id=29194559` | ✅ |
+| D2 | "APFS is normalization-insensitive yet normalization-preserving… if you create a Korean-named file yourself in Finder the file name is normalized in **NFD**, but if you create it in a zsh shell it's **NFC**… **a lot of programs gets subtly crazy when `fopen(A/B)` succeeds but `listdir(A)` doesn't list B**." | HN · `https://news.ycombinator.com/item?id=35336510` | ✅ |
+| D3 | "I have a file `grössen.md`; when I try to open it, it isn't shown when I type `grö`… I suspect this is due to zed using **Unicode NFC** internally, while the macOS file system is using **NFD**." | `https://github.com/zed-industries/zed/issues/30503`（open） | ✅ |
+| D4 | "zip file created from Mac OS, with Chinese characters filename, then unzip on Windows → filename encoding is UTF-8, but Windows use GBK to decode… **It seems there is no good way to detect which scene is**" | `https://github.com/gtreshchev/RuntimeArchiver/issues/1` | ✅ |
+| D5 | "The seeking reader reads **BOTH** the central directory and the local file header… in case of a mismatch… it **always prefers the data in the local file header**" | `https://github.com/libarchive/libarchive/issues/2695`（libarchive 作者 kientzle 本人） | ✅ |
+| D6 | "Info-ZIP's `unzip`, libzip, and Python's stdlib `zipfile` all read the Central Directory's filename. libarchive is the one that diverges here, which means archives can **round-trip differently… depending on which tool opens them** — the exact kind of inconsistency that makes ZIP parsing differentials a known source of confusion (and, in adversarial contexts, **smuggling**)" | 同上 issue，fdegros（2026-09-24） | ✅ |
+
+> 引用纪律：以上为**原话节选**，只用于证明需求真实与"读哪个头是**实现选择**"，不用于推导任何数值阈值。
+
+### 1.3 本机实测（✅ 硬证据：三工具分歧 / 不可见性 / NTFS ≠ casefold）
+
+#### 1.3.1 四工具对同一归档的行为分歧
+
+| fixture | 构造 | Python `zipfile` | Info-ZIP `unzip` | 7-Zip 25.01 | `zipdetails` |
+|---|---|---|---|---|---|
+| `mismatch_name.zip` | LFH `allowed.txt` / CD `evil.txt` | **`BadZipFile` 硬失败** | 写 `evil.txt`，stderr 警告 | 写 `allowed.txt`，报 `Errors: 1` 仍算成功 | 打 `ERROR`，但 **exit code = 0** |
+| NFC `café` + NFD `café` | 同名不同归一形 | 落盘 2 个（NTFS 不折叠） | 落 2 个乱码名 | 落 2 个（NFD 那条改名 `cafe_.txt`） | — |
+| `Readme.txt` + `README.TXT` | 仅大小写不同 | 只剩 1 个，内容 `LOWER` | 只剩 1 个，内容 `LOWER` | 只剩 1 个，内容 `LOWER` | — |
+| `CON.txt` / `aux.tar.gz` / `trailing. ` / `trailingdot.` / `colon:name.txt` | 保留名、尾随点空格、冒号 | 全写出（`trailing` 被截断） | `:`→`_`，尾随点保留 | 全部加 `_` 前缀 | — |
+
+**核心结论**：同一归档 **3 个工具写出 2 个不同文件名，1 个拒绝打开**；`zipdetails` 报了错却返回 0，即"报错但退出码撒谎"。
+
+#### 1.3.2 应用层不可见性（`CON.txt`）
+
+| 观测 | 结果 |
+|---|---|
+| PowerShell `Test-Path -LiteralPath CON.txt` | **False** |
+| PowerShell `Get-Content CON.txt` | 报 *path does not exist* |
+| Python `open('CON.txt','rb').read()` | **读到内容** |
+
+→ "文件存在但应用层拿不到"的最小可信证据；本题 MOD-4 的第三级 `WRITTEN_UNREADABLE` 由此而来。
+
+#### 1.3.3 NTFS 折叠 ≠ casefold / upper（8 组字符对）
+
+| 字符对 | casefold/upper 预测 | 实测 NTFS |
+|---|---|---|
+| `ı` / `I` | 冲突（simple_upper） | **不冲突** ✗ |
+| `ſ` / `S` | 冲突 | **不冲突** ✗ |
+| `ß` / `SS` | 冲突 | **不冲突** ✗ |
+| `ß` / `ss` | 冲突 | **不冲突** ✗ |
+| `İ` / `i` | — | **冲突** ✓ |
+| `ǅ` / `Ǆ` | — | **不冲突** ✗ |
+| `ω` / `Ω` | — | **冲突** ✓ |
+| （对照组，同字符不同写法） | 不冲突 | **不冲突** ✓ |
+
+→ **所有现存工具都用 `str.lower()`/`casefold()` 近似 NTFS，会产生假阳性**。这条是 MOD-3 必须用真实 `$UpCase` 表的直接理由。
+
+### 1.4 规范原文（✅ 已核对；逐条对应关系见 `docs/rules.md`）
+
+| 依据 | 位置 | 原文要点 | 状态 |
+|---|---|---|---|
+| Windows 文件名规则 | MS Learn 命名规范 | 非法字符 `< > : " / \ | ? *` 与 0x00–0x1F；保留设备名 CON/PRN/AUX/NUL/COM1-9/LPT1-9 **及带扩展名**（`NUL.txt` 等价于 `NUL`）与上标 ¹²³；尾随空格/点；`MAX_PATH=260`（含终止 NUL）；`\\?\` 前缀下 32767；**"the file system treats path and file names as an opaque sequence of WCHARs"（Windows 不做归一化）** | ✅ |
+| UAX #15 | Unicode Standard Annex #15 | NFD/NFC 的定义与规范分解/组合。**UAX #15 本身不谈文件系统**，FS 侧必须另引 TN1150 与实现观察 | ✅ |
+| HFS Plus 归一化存储 | TN1150 | "HFS Plus stores strings fully decomposed and in canonical order" | ✅ |
+| APFS 归一化不敏感 | libfsapfs（逆向文档） | 卷不兼容标志 `0x08 APFS_INCOMPAT_NORMALIZATION_INSENSITIVE`；name hash 用 NFD；大小写不敏感卷先 lower-case | ⬜ **中硬：实现观察，非 Apple 官方规范** |
+| Linux 文件名约束 | `pathname(7)` | `/` 不可出现在文件名；`PATH_MAX` 为**字节**口径；`NAME_MAX` 由 fstype 决定 | ✅ |
+| ZIP 文件名编码 | APPNOTE 6.3.10 D.1 / D.2 | bit 11 set → **MUST** 为 UTF-8；unset → 历史 CP437 | ✅（镜像来源见下） |
+| ZIP Unicode path extra field | APPNOTE 6.3.10 D.6 | Info-ZIP 0x7075（Unicode Path）/ 0x6375（Unicode Comment）结构 | ✅（镜像来源见下） |
+| APPNOTE **未**要求 LFH 与 CD 名一致 | 逐字检索 | "must be identical" / "SHOULD match" **均无命中** → 判定只能引**实现选择**，不得编造条文 | ✅ |
+| EPUB 容器约定 | EPUB 3.3 §4.3.3 | "MUST include the mimetype file as the first file"；"MUST NOT contain any leading or trailing padding or whitespace"；"MUST NOT compress or encrypt"；"MUST NOT include an extra field" | ✅ |
+| EPUB 文件名编码 | EPUB 3.3 §4.3.2 | "OCF ZIP containers MUST encode file system names using UTF-8" | ✅ |
+| ODF 容器约定 | ODF 1.2 part 3 §3.3 | "shall be the first file"；"shall not be compressed… shall not use an 'extra field'" | ✅ |
+| ODF 尾随换行 | — | **未明文禁止**；从 media-type 相等约束推出 → 输出须标 `inferred` | ✅（推断已标注） |
+
+### 1.5 取源失败与替代（必须随题记录）
+
+| 目标 | 结果 | 替代方案 |
+|---|---|---|
+| PKWARE 官方 APPNOTE 原址 | **不可达**（http 000 / DNS 失败） | 改用 GitHub 镜像 `bearcove/rc-zip` 的 `static/appnote.txt`（v6.3.10）；引用时须写明镜像来源 |
+| Apple 官方 APFS 规范 | **未取到**：`developer.apple.com` 与 APFS Reference PDF 均 **ECONNRESET** | 改用 libfsapfs 逆向文档 + HN 实操；**证据强度降为中硬，文档必须标注"非 Apple 官方规范"** |
+
+---
+
+## 2. 数据源可获取性记录
+
+| 数据源 | 可获取性 | 说明 / 阻断原因 |
+|---|---|---|
+| 真实归档样本（网上下载） | **不可获取，且不使用** | 零网络是硬约束；真实归档可能含未公开内容，隐私红线。 |
+| Windows / macOS / Linux 的实际行为 | ✅ 可获取（本机 Windows 已实测；macOS/Linux 需目标机或表模拟） | Windows 侧已实测（§1.3）；**macOS/Linux 的实测在非对应平台上不可得**，只能用平台表模拟，报告须标 `table_simulated` 而非 `measured` |
+| 真实 NTFS `$UpCase` 表 | ✅ 可获取（卷读取或真机探测） | 必须记录卷标识与探测环境；**禁止用 `str.lower()`/`casefold()` 替代** |
+| APFS 折叠语义 | ⬜ 中硬 | 逆向文档 + 实操；未取到 Apple 官方原文（§1.5）。 |
+| 规范原文 | ✅ 可获取（Windows / UAX #15 / TN1150 / pathname(7) / EPUB / ODF 直连；APPNOTE 用镜像） | 见 §1.4 / §1.5。 |
+| 自建 fixture | ✅ 完全可获取 | 全部由 `struct.pack` 程序化合成，零网络、可重复、逐字节一致（见 §3）。 |
+
+**结论**：本题**不需要任何外部归档数据**；唯一的真实数据依赖是"目标平台语义"，其中 Windows 可实测、Linux 可从规范推导、macOS 依赖中硬依据（必须标注）。
+
+**阻断纪律**：任何 ⬜ 项不得以确定语气写入判定；macOS 折叠判定在输出中带 `evidence_strength: medium`。
+
+---
+
+## 3. 合成数据纪律
+
+### 3.1 构造纪律（硬约束）
+
+- **全部 fixture 由 `tools/gen_fixtures.py` 用 `struct.pack` 直接拼接字节**，不调用任何压缩库写出归档（避免"用别人的实现生成样本、再用别人的实现校验"的循环论证）；需要 deflate 时用 `zlib.compressobj(level=..., raw)` 只取压缩流字节。
+- **不含任何真实用户文件内容**：payload 一律为固定 ASCII 短语（如 `PAYLOAD-A`），名字才承载判定信息。
+- **逐字节可复现**：不使用随机、不写入当前时间（DOS 时间字段固定为常量 `1980-01-01 00:00`）；同一命令重复运行产物**逐字节一致**，由 `gen_fixtures.py --check` 校验。
+- **每条 fixture 附真值**：`data/truth/<fixture>.json` 记录期望的 `ruleId` 集合、期望的落盘名、期望的 `survivor`、期望的 `accessibility` 级别。
+- **样本与真值同提交**：任何 fixture 改动必须同步改真值；`tests/` 里的对账测试校验"fixture ↔ 真值一一对应、无孤儿"。
+
+### 3.2 fixture 清单与判定项映射
+
+| fixture | 构造要点 | 覆盖判定项 |
+|---|---|---|
+| `mismatch_name.zip` | LFH 名 `allowed.txt`，CD 名 `evil.txt`（长度相同便于构造） | `structure.NAME_DIVERGES` |
+| `alias_lfh.zip` | 名字一致，LFH 与 CD 的 general purpose flag 不同（bit 11） | `structure.FLAG_DIVERGES` |
+| `overlap.zip` | 两个 entry 的 LFH 记录区间物理相交 | `structure.LFH_OVERLAP` |
+| `wrong_count.zip` | EOCD 声明条目数 ≠ 实际 CD 条目数 | `structure.CD_COUNT_MISMATCH` |
+| `crc_diverge.zip` | LFH 与 CD 的 CRC32 不同 | `structure.CRC_DIVERGES` |
+| `size_diverge.zip` | LFH 与 CD 的 size 不同 | `structure.SIZE_DIVERGES` |
+| `zh_gbk.zip` | 无 bit11，名字为 GBK 编码的 `中文名.txt` | `encoding.candidates[]` 三提取器分歧 |
+| `upath.zip` | 无 bit11，带 0x7075 指向 `café.txt` | `upath` + `predictedNames`（7-Zip vs Python/unzip） |
+| `upath_badcrc.zip` | 0x7075 的 CRC 字段错误 | `upath_crc_mismatch` 降级 |
+| `case.zip` | `Readme.txt` + `README.TXT`，payload 分别为 `UPPER` / `LOWER` | `collision.CASEFOLD` + `survivor=README.TXT` |
+| `norm.zip` | NFC `café.txt` + NFD `café.txt` | `collision.NFC`（分平台结论相反） |
+| `trim.zip` | `readme.` + `readme` | `collision.TRIM` + `WRITTEN_TRUNCATED` |
+| `filedir.zip` | 同时有 `a`（文件）与 `a/b`（路径） | `collision.FILEDIR` |
+| `reserved.zip` | `CON.txt`、`NUL.txt`、`COM1.log`、`aux.tar.gz` | `WRITTEN_UNREADABLE` |
+| `trailing.zip` | `trailing. `、`trailingdot.`、`colon:name.txt` | `WRITTEN_TRUNCATED` |
+| `not_first.epub` | `mimetype` 不是首个条目 | `container.MIMETYPE_NOT_FIRST` |
+| `compressed.epub` | `mimetype` 被 deflate | `container.MIMETYPE_COMPRESSED` |
+| `extra.epub` | `mimetype` 带 extra field | `container.MIMETYPE_EXTRA` |
+| `padding.epub` | `mimetype` 内容带尾随换行 | `container.MIMETYPE_PADDING`（`inferred`） |
+| `long_path.zip` | 解出的完整路径 >260 | `budget.PATH_OVER_260` |
+| `long_comp.zip` | 单组件 >255 字节 | `budget.COMPONENT_OVER_255` |
+| `clean.zip` | 完全正常的两条目 | **零误报基线**（不得产生任何 finding） |
+
+---
+
+## 4. 数值与口径的单一真相源（全项目只此一处）
+
+> **修改本节必须先改这里，再同提交同步代码与文档；其他任何文档只可引用口径键，不得写第二份数值表述。**
+
+### 4.1 退出码
+
+| 退出码 | 语义 | 判据 |
+|---|---|---|
+| `0` | 检查完成，**无** finding | 至少一个条目被检查且 findings 为空 |
+| `1` | 检查完成，**有** finding | findings 非空 |
+| `2` | **输入无法解析**（不是 ZIP / EOCD 找不到 / 文件读不了） | 不得退化为 `0`（"依赖/输入缺失不得静默变成合法空结果"） |
+| `3` | **口径/平台表缺失**（如 `$UpCase` 表未提供而目标含 windows） | 不得静默跳过 windows 折叠判定后返回 `0` |
+| `4` | 用法错误 | 参数非法 |
+
+> 纪律：任何"我做不了"的分支都必须是 `2`/`3`，**绝不允许静默返回 `0`**。这一条进 CI 断言。
+
+### 4.2 三级可访问性（`accessibility`）
+
+| 级别 | 定义（唯一表述） |
+|---|---|
+| `BLOCKED` | 目标平台在创建时即失败：Linux 名含 `/`；Windows 名含 `< > : " / \ | ? *` 或 0x00–0x1F；名字为空或仅为 `.`/`..` |
+| `WRITTEN_UNREADABLE` | 创建成功但**应用层不可达**：Windows 保留设备名（CON/PRN/AUX/NUL/COM1-9/LPT1-9，**含带扩展名形式**，含上标 ¹²³） |
+| `WRITTEN_TRUNCATED` | 创建成功但**名字已变**：尾随空格/点被裁剪、组件超长被截断（Windows 260 / Linux 字节口径） |
+
+> `OK` 是第四种取值（无上述三情形的条目），但**不是"级别"**，不参与分级评分。
+
+### 4.3 折叠规则来源与判据
+
+| 目标 | 大小写折叠来源 | 归一化折叠 | 裁剪折叠 |
+|---|---|---|---|
+| `windows` | **真实 NTFS `$UpCase` 表**（卷读取或真机探测，记录卷标识与探测环境）；**禁止 `str.lower()`/`casefold()`** | **不做**（Windows 把名字当不透明 WCHAR 序列） | 尾随空格与尾随点被裁剪 |
+| `macos` | 大小写不敏感卷 → 先 lower-case（libfsapfs 观察，`evidence_strength: medium`） | **做**（NFD 归一化后比较；APFS 归一化不敏感） | 不做 |
+| `linux` | 不做折叠 | 不做 | 不做 |
+
+- `collision.CASEFOLD` / `collision.NFC` / `collision.TRIM` / `collision.FILEDIR` 的**判定顺序固定**为 FILEDIR → CASEFOLD → NFC → TRIM（同一对名字可命中多条，全部输出）。
+- `survivor` = 按 CD 顺序**最后写入**者；`verdict` ∈ {`overwritten`, `renamed`, `skipped`}。
+
+### 4.4 编码候选与可信度
+
+- 候选顺序固定：`UTF-8`, `CP437`, `GBK`, `CP932`, `CP949`, `CP1251`。
+- 可信度：
+  - `high`：bit 11 set（UTF-8 MUST）或 0x7075 存在且 CRC 校验通过；
+  - `medium`：字节序列在候选编码下可完整解码且全部落在该编码的"常用字区"；
+  - `low`：其余（含可解码但含控制字符/未分配码点）。
+- `upath_crc_mismatch` 时，0x7075 的覆盖判定**失效并降级为 `low`**，同时输出 finding。
+
+### 4.5 容器约定检查项（固定五条）
+
+`container.MIMETYPE_NOT_FIRST` / `MIMETYPE_COMPRESSED` / `MIMETYPE_EXTRA` / `MIMETYPE_PADDING` / `UTF8_REQUIRED`。
+其中 `MIMETYPE_PADDING` 对 ODF 上下文标 `inferred: true`（ODF 原文未明文禁止尾随换行，从 media-type 相等约束推出）。
+
+### 4.6 长度预算
+
+| 口径键 | 值 | 说明 |
+|---|---|---|
+| `win_max_path` | 260 | 含终止 NUL；`\\?\` 前缀下 32767 |
+| `linux_path_max` | 4096 | 字节口径，不含终止 NUL |
+| `name_max_default` | 255 | **字节**口径（Linux）；Windows 侧为 UTF-16 码元计数的组件长度，按平台分别判定 |
+
+> 以上数值均来自规范原文（§1.4），不是本项目自定；如规范改版，先改本节。
+
+### 4.7 证据强度标记（输出字段 `evidence_strength`）
+
+| 值 | 含义 |
+|---|---|
+| `measured` | 本机实测（附环境） |
+| `table_simulated` | 用平台表模拟（非本机实测，如非 Windows 机器上的 Windows 判定） |
+| `medium` | 依据为中硬（APFS：逆向文档 + 实操，非官方规范） |
+| `inferred` | 从其他约束推出（ODF 尾随换行） |
+
+---
+
+## 5. 证据强度自评
+
+| 论据 | 强度 | 依据 | 说明 |
+|---|---|---|---|
+| 四工具对 `mismatch_name.zip` 的分歧 | **硬** | 本机实测 + stderr / exit code | 3 工具 2 名字、1 工具拒绝；可直接复现 |
+| `CON.txt` 应用层不可见 | **硬** | 本机实测三观测（Test-Path / Get-Content / open） | 三级分级的直接来源 |
+| NTFS 折叠 ≠ casefold | **硬** | 8 组字符对实测 | 近似法的假阳性由此证明 |
+| 后写覆盖（`Readme.txt` + `README.TXT`） | **硬** | 三工具实测，最终内容均为 `LOWER` | `survivor` 预测的依据 |
+| 编码分歧（GBK / 0x7075） | **硬** | 三工具实测行为 + APPNOTE 镜像 | 预测规则可回归 |
+| ZIP 双头不一致的**实现选择** | **硬** | libarchive#2695 作者原话 + 三工具实测 | 不引规范条文 |
+| Windows 命名规则 | **硬** | MS Learn 原句 | 逐条进 `docs/rules.md` |
+| EPUB / ODF 容器约定 | **硬** | 规范原句 | ODF 尾随换行标 `inferred` |
+| HFS Plus 全分解 | **硬** | TN1150 原句 | — |
+| **APFS 归一化不敏感** | **中硬** | libfsapfs 逆向文档 + HN 实操 | **未取到 Apple 官方原文**（ECONNRESET）；输出标 `medium` |
+| APPNOTE 原文 | **中硬（来源替代）** | GitHub 镜像 `bearcove/rc-zip` `static/appnote.txt` v6.3.10 | 官方原址 http 000 / DNS 失败；引用须写镜像来源 |
+| 开源检索总量与星数 | **软** | 13 条检索式 + 窗口 2026-10-19T18:35Z–19:10Z | 快照，不作"首创"证明 |
+| 同期 4 个同题仓库 | **软（但方向性重要）** | 仓库名 + 星数快照 | **红海警告，必须随题记录** |
+| macOS / Linux 的实际落盘行为 | **未验证（⬜）** | 本机无对应平台 | 只能用表模拟，输出标 `table_simulated`；不得写成"实测" |
+
+> 纪律：上表中所有"软"与"中硬"项，在题面与 README 中**不得用确定语气**，且必须带来源与强度标记。
