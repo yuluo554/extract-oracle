@@ -32,6 +32,7 @@
 | `docs/rules.md` / `docs/divergence.md` | 规则原句 + 四工具分歧对照 | ⬜ M4/M6 |
 | `README.md` / `LICENSE` / `.gitignore` | 产品页 / MIT / Python 标准模板 | ✅ M0 |
 | `scripts/build.py` | PyInstaller onefile 构建（版本自报断言） | 🟡 M0 脚本位；产物 M6 |
+| `scripts/entry.py` | 冻结态入口（**绝对导入**薄壳；PyInstaller 把入口当顶层脚本，相对导入必崩） | ✅ M0 |
 | `plan/RELEASE-M6.md` | 发布留档（tag 时点 / tag 后追加 两栏） | ⬜ M6 |
 
 > 索引状态只在本表维护；`plan/01` 与 `data/README.md` 不重复登记状态。

@@ -56,7 +56,9 @@ def main(argv: list[str] | None = None) -> int:
         str(build_dir),
         "--paths",
         str(ROOT / "src"),
-        str(ROOT / "src" / "extract_oracle" / "__main__.py"),
+        # 入口必须是**绝对导入**的薄壳：PyInstaller 把入口当顶层脚本执行，
+        # `__main__.py` 里的相对导入会抛 ImportError（M0 首次打包实测）。
+        str(ROOT / "scripts" / "entry.py"),
     ]
     print("running:", " ".join(cmd))
     subprocess.run(cmd, check=True, cwd=ROOT)
@@ -67,10 +69,12 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     # 产物自报版本必须与根模块一致（版本号第三条断言，前两条见 tests/）
-    out = subprocess.run([str(exe), "--version"], capture_output=True, text=True, check=True)
+    out = subprocess.run([str(exe), "--version"], capture_output=True, text=True)
     reported = out.stdout.strip()
-    if __version__ not in reported:
-        print(f"FAIL  产物自报版本不含 {__version__}: {reported!r}")
+    if out.returncode != 0 or __version__ not in reported:
+        print(f"FAIL  产物自检失败（rc={out.returncode}）")
+        print(f"  stdout: {reported!r}")
+        print(f"  stderr: {out.stderr.strip()[:800]!r}")
         return 1
     print(f"OK    {exe}  (self-reported: {reported})")
     return 0

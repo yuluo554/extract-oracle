@@ -14,6 +14,7 @@
 | fixture + 真值 | `data/fixtures/*.zip` + `data/fixtures/truth/*.json` | `tests/test_fixtures.py` |
 | CI 预置 | `.github/workflows/ci.yml`（gate + 3×2 测试矩阵） | **未首推，CI 待验证**（`plan/05` §五 U1） |
 | 产品页 / 许可 | `README.md` / `LICENSE` / `AGENTS.md` | 脱敏门 0 命中 |
+| 冻结态链路 | `scripts/build.py` + `scripts/entry.py` | **M0 实测**：PyInstaller onefile 构建成功，产物 `--version` / `inspect` 通过；入口用 `__main__.py` 会崩（已修，`tests/test_freeze_entry.py` 钉住） |
 
 **M0 的关键判定（D10）**：判定层未落地时 `check` 返回退出码 **3**（`capability_missing`），
 **不产出空 findings**。这是"最坏的假绿"的防线，M2 起逐模块翻 `capabilities.MODULES[*].implemented`。
@@ -84,6 +85,14 @@ LFH/CD 一致"；③ 不得下载任何真实归档。
   验收走"Python 以 utf-8 读回"或编辑器。
 - `gh` 已登录 `yuluo554`（keyring，HTTPS）；远端尚未创建，**首次 push 前先建仓**。
 - `pytest` 8.4.2 / PyYAML 6.0.3 / PyInstaller 已装（3.12 通道）；3.8 通道不保证有。
+- **`/tmp` 里有别人留下的 `inspect.py`**（`C:\Users\<user>\AppData\Local\Temp\inspect.py`）：
+  在 `/tmp` 下跑本工具会**劫持标准库 `inspect`**，报 `module 'inspect' has no attribute 'get_annotations'`。
+  判别 = **"报错栈里 `inspect.__file__` 指向临时目录"** → 换工作目录即可，不是本项目缺陷。
+  中立目录验证一律用**仓库外、无同名模块的任意目录**（本机实测用过的那个路径不入库）。
+- **冻结态入口必须用 `scripts/entry.py`（绝对导入）**，不能拿 `src/extract_oracle/__main__.py`：
+  PyInstaller 把入口当顶层脚本执行，相对导入会 `ImportError: attempted relative import with no
+  known parent package`（M0 首次打包实测，脚本态全绿、产物直接起不来）。
+  `tests/test_freeze_entry.py` 对这条做 AST 反向断言（把入口改回 `__main__.py` 必须红）。
 
 ## 6. DoD 逐项 checklist（M1）
 
