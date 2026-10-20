@@ -10,12 +10,12 @@
 | 平台表接入（`sha256` 对账 / `source` 枚举 / 两输出面分开） | `src/extract_oracle/platforms.py` | `tests/test_fold.py`（6 条：正向对账 + 篡改即拒 + 非法 `source` + 表缺 + `probed_at_utc` 不进报告 + 报告带表 sha256） |
 | `platforms --verify` 真校验 | `src/extract_oracle/cli.py::cmd_platforms` | `tests/test_cli_contract.py::test_platforms_verify_reports_fingerprint`；实跑输出含 `entries=65536` / `sha256=41c26bc7a12bdaeb…` / `serial=445ED634` |
 | `Collision` 形状 + 排序 | `src/extract_oracle/findings.py` | `Collision.to_dict()` + `sort_collisions()`（`(min(cd_offset), code)` 全序）；`test_fold.py::test_collision_shape_has_no_absent_fields` |
-| MOD-3 四条规则 | `src/extract_oracle/rules/fold.py` | `tests/test_fold.py` 40 条（四规则分平台 + 真值逐条对账 + 判定顺序 + 跨规则不短路 + 零误报） |
+| MOD-3 四条规则 | `src/extract_oracle/rules/fold.py` | `tests/test_fold.py` 50 条（四规则分平台 + 真值逐条对账 + 判定顺序 + 跨规则不短路 + 8 组字符对双表回归 + 零误报） |
 | 写序 → 存活者 | 同上（`_pair_base` / `filedir_pairs`） | `case.zip` → `README.TXT`（`overwritten`）；`filedir.zip` → `a`（`skipped`，三平台一致） |
 | `capabilities.fold` 翻 True | `src/extract_oracle/capabilities.py` | `test_fold.py::test_fold_module_is_implemented` + `::test_fold_module_is_dispatchable_from_cli` |
 | CLI 接线 | `cli.py::_run_module` 的 `fold` 分支 + `collisions` 输出 + 退码含 collision | `test_fold.py::test_fold_targets_are_independently_assertable`、`::test_fold_entry_point_runs_in_subprocess` |
 | CI 折叠冒烟 | `.github/workflows/ci.yml`（`Fold findings smoke`，11 steps） | `yaml.safe_load` 解析通过（2 job / 5+11 steps） |
-| M3 常驻断言总数 | `py -3.12 -m pytest` | **227 passed**（M2 收尾时为 181） |
+| M3 常驻断言总数 | `py -3.12 -m pytest` | **240 passed**（M2 收尾时为 181） |
 
 **M3 的四处口径决定（会改变 M4–M6 的判定口径）**：
 

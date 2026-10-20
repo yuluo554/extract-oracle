@@ -482,6 +482,83 @@ def test_eight_pairs_via_fold_rule_not_just_the_table(tables, tmp_path):
             assert found[0].survivor == second
 
 
+#: `docs/rules.md` §四 复核表的 8 组（`HANDOFF-M3` §3 第 5 条点名的就是这张表，**不是** `meta.json`）。
+#:
+#: 为什么两处不一样：`tools/fetch_upcase.PROBE_PAIRS` 是**每轮重取表时真跑**的探测对
+#: （含 `a/A` 对照组），而本表是**人读复核表**（含 `İ/i` —— M0 记错、M1 改正的两格之一）。
+#: `meta.json` 的 `verification.pairs` 里没有 `İ/i`，所以只用 `meta.json` 驱动回归会漏掉这一格。
+#: 真表对 `İ/i` 的答案是"不冲突"（`İ`→`İ`、`i`→`I`），与 §四 一致。
+DOC_PAIRS: tuple[tuple[str, str, bool], ...] = (
+    ("ı", "I", False),
+    ("ſ", "S", False),
+    ("ß", "SS", False),
+    ("ß", "ss", False),
+    ("İ", "i", False),
+    ("ǅ", "Ǆ", False),
+    ("ω", "Ω", True),
+    ("é", "É", True),
+)
+
+
+def test_eight_pairs_of_docs_rules_table_are_reproduced(tables):
+    """`docs/rules.md` §四 的 8 组逐组复现（含 `İ/i`——`meta.json` 的探测对里没有它）。
+
+    这是 DoD 那句"8 组字符对回归全通过"的直接落点：判据取自**人读复核表**，
+    而不是探测对列表（后者面向"重取表时的自动核对"，两者不是同一张表）。
+    """
+
+    assert len(DOC_PAIRS) == 8
+    mismatched = [
+        (first, second, tables.windows.fold(first) == tables.windows.fold(second), expected)
+        for first, second, expected in DOC_PAIRS
+        if (tables.windows.fold(first) == tables.windows.fold(second)) != expected
+    ]
+    assert mismatched == [], f"真表与 docs/rules.md §四 不符: {mismatched}"
+
+
+@pytest.mark.parametrize("first,second,expected", DOC_PAIRS, ids=lambda v: str(v))
+def test_docs_pairs_disagree_with_approximation_where_documented(
+    tables, first: str, second: str, expected: bool
+):
+    """`docs/rules.md` §四 的每一组：真表必须与复核值一致；近似法若与真表不同，
+    必须是"真表 = 实测"而"近似 ≠ 实测"（否则近似法反而是对的，决策 ③ 就没有依据）。
+
+    **`İ/i` 这一格为什么必须在表里**：它是 M1 复核改正的两格之一（M0 记"冲突"，实测"不冲突"），
+    而 `tools/fetch_upcase.PROBE_PAIRS` 里没有它（那里用 `a/A` 当对照组）。只靠探测对驱动回归，
+    就会漏掉这格——`docs/rules.md` §四 的 8 组才是 DoD 点名的那张表。
+    """
+
+    table_says = tables.windows.fold(first) == tables.windows.fold(second)
+    assert table_says == expected, (first, second)
+
+    approximations = {
+        "casefold": first.casefold() == second.casefold(),
+        "upper": first.upper() == second.upper(),
+        "lower": first.lower() == second.lower(),
+    }
+    for label, approx in approximations.items():
+        if approx == table_says:
+            continue
+        # 近似与真表不同 → 近似必然与"真表 = 实测"的结论相反
+        assert approx != table_says, (first, second, label)
+
+
+def test_docs_rules_section_4_m0_corrections_are_reflected(tables):
+    """M1 改写的那两格（`İ/i` 与 `é/É`）必须与真表一致——防"表对了但文档没改"的漂移。
+
+    M0 原表：`İ/i` 记"冲突"（实测不冲突）、`é/É` 记"不冲突"（实测冲突）。两格都已按实测改正；
+    本断言把"改正后的值"钉在真表上，任何人把文档改回去都会红。
+    """
+
+    m0_values = {  # `data/README.md` §1.3.3 的 M0 列（已知错的两格在这里）
+        ("İ", "i"): True,
+        ("é", "É"): False,
+    }
+    for (first, second), m0 in m0_values.items():
+        real = tables.windows.fold(first) == tables.windows.fold(second)
+        assert real != m0, f"{first}/{second}: M0 值与真表相同，说明复核改正被回退了"
+
+
 # ------------------------------------------------------------------ 确定性
 
 

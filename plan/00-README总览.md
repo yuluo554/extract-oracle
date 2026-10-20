@@ -192,7 +192,7 @@
 4. **写序→存活者**（`findings.Collision`）：`writeOrder` = CD 顺序；`survivor` = 后写者
    （`FILEDIR` 例外：先写者存活，后写者根本没落盘）；`verdict` ∈ {`overwritten`,`renamed`,`skipped`}；
    `collisions` 按 `(min(cd_offset), code)` 升序。
-5. **判定层守门**：`capabilities.fold` 已翻 True（同提交补 `tests/test_fold.py`，40 条）；`collisions`
+5. **判定层守门**：`capabilities.fold` 已翻 True（同提交补 `tests/test_fold.py`，50 条）；`collisions`
    与 `findings` 同为判定产出（退码 1 的判据是两者任一非空，K13）；K10 AST 守门对 `rules/fold.py`
    是第一个**实质**靶子（它本可以用 `lower()` 蒙混）。
 
