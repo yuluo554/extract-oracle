@@ -13,7 +13,8 @@ import pytest
 
 from extract_oracle.cli import build_parser
 
-README = Path(__file__).resolve().parent.parent / "README.md"
+REPO = Path(__file__).resolve().parent.parent
+README = REPO / "README.md"
 
 #: README 里以 `extract-oracle ` 开头的可执行行（代码块内）。
 COMMAND_LINE = re.compile(r"^extract-oracle (.+)$", re.M)
@@ -68,3 +69,29 @@ def test_readme_documents_exit_codes():
     for code in ("| 0 |", "| 1 |", "| 2 |", "| 3 |", "| 4 |"):
         assert code in text, f"README 缺退出码 {code}"
     assert "绝不静默退化" in text or "不是故障" in text
+
+
+def test_section_references_point_at_existing_sections():
+    """代码/文档里的 `data/README.md` §N.M 引用必须有实物（防悬空口径引用）。
+
+    实测来源：`report.py` 曾引用 §4.8（当时不存在）——引用悬空时，"口径单点"变成
+    "引用了一个不存在的唯一真相源"，比没有引用更糟。
+    """
+
+    import re
+
+    data_readme = (REPO / "data" / "README.md").read_text(encoding="utf-8")
+    existing = set(re.findall(r"^###\s+(\d+\.\d+)\s", data_readme, re.M))
+    assert existing, "data/README.md 里没解析出任何 §N.M 小节（抽取面坏了）"
+
+    sources = [REPO / "src" / "extract_oracle" / name for name in (
+        "report.py", "cli.py", "errors.py", "zip_reader.py"
+    )]
+    sources += list((REPO / "plan").glob("*.md"))
+    dangling = []
+    for path in sources:
+        text = path.read_text(encoding="utf-8")
+        for ref in re.findall(r"data/README\.md[^\n]{0,20}?§(\d+\.\d+)", text):
+            if ref not in existing:
+                dangling.append(f"{path.name} → §{ref}")
+    assert dangling == [], f"悬空的 §N.M 引用: {dangling}"

@@ -243,6 +243,25 @@
 | `medium` | 依据为中硬（APFS：逆向文档 + 实操，非官方规范） |
 | `inferred` | 从其他约束推出（ODF 尾随换行） |
 
+### 4.8 输出序列化契约（确定性的唯一表述）
+
+> 全部写盘只经 `extract_oracle.report.write_atomic`；本节的参数是**冻结契约**（K03/K09），
+> 改任何一项都必须同提交改本表并跑 `tests/test_report_determinism.py`。
+
+| 项 | 冻结值 | 为什么 |
+|---|---|---|
+| JSON 序列化 | `json.dumps(..., ensure_ascii=False, sort_keys=True, indent=2)` | 中文不转义（否则 diff 不可读）；键序稳定 |
+| 文本导出 | 行序由 payload 的固定键顺序决定，不遍历 dict | 防插入序漂移 |
+| 换行 | 恒 `\n`；文件结尾恒有换行 | 跨平台逐字节一致 |
+| 编码 | UTF-8（无 BOM） | 同上 |
+| 时间戳 | **不输出** | 同输入双跑必须逐字节一致 |
+| 随机 ID | **不输出** | 同上 |
+| 本机绝对路径 | **不输出** | 隐私红线 + 跨机可比 |
+| 数组排序 | `findings` 按 `(cd_offset, ruleId)` 升序；`collisions` 按 `(min(cd_offset), code)` 升序 | 规范序单点定义 |
+| 数值格式 | 整数；不出现浮点；不定点舍入 | 避免跨语言格式化差异 |
+| 原子写 | 写临时文件 + `os.replace` | 中断不留半个产物 |
+
+
 ---
 
 ## 5. 证据强度自评
