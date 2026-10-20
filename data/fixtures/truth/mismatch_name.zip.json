@@ -1,0 +1,6 @@
+{
+  "expected_findings": [
+    "structure.NAME_DIVERGES"
+  ],
+  "fixture": "mismatch_name.zip"
+}

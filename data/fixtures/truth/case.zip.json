@@ -1,0 +1,14 @@
+{
+  "expected_collisions": {
+    "linux": [],
+    "macos": [],
+    "windows": [
+      {
+        "code": "collision.CASEFOLD",
+        "survivor": "README.TXT"
+      }
+    ]
+  },
+  "expected_findings": [],
+  "fixture": "case.zip"
+}

@@ -1,0 +1,13 @@
+{
+  "expected_collisions": {
+    "linux": [],
+    "macos": [
+      {
+        "code": "collision.NFC"
+      }
+    ],
+    "windows": []
+  },
+  "expected_findings": [],
+  "fixture": "norm.zip"
+}

@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "extract-oracle"
+description = "归档提取预言机：只读归档字节，预言各提取器会写出什么名字、谁覆盖谁、谁被拒绝"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "yuluo554" }]
+keywords = ["zip", "archive", "unicode", "filename", "ntfs", "cli"]
+classifiers = [
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: System :: Archiving",
+]
+# 版本单一真源 = src/extract_oracle/__init__.py 的 __version__（勿在此写死第二份）。
+dynamic = ["version"]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+build = ["pyinstaller>=6"]
+
+[project.scripts]
+extract-oracle = "extract_oracle.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/yuluo554/extract-oracle"
+
+[tool.setuptools.dynamic]
+version = { attr = "extract_oracle.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

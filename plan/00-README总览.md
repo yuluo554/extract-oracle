@@ -1,13 +1,13 @@
 # 00 · README 总览 — 10-21-extract-oracle（归档提取预言机）
 
-> 方法论：`ai-tool-topic-definer`（出题器）→ 交接 `ai-tool-project-sprint`（M1 起）
-> 续接对话第一件事：读 §一 索引 → 读 §三 台账 → 读 §六 里程碑表，不重读全文
+> 方法论：`ai-tool-project-sprint`（装订 2026-10-21）｜布局门：`py -3.12 tools/check_sprint_layout.py`｜脱敏门：`py -3.12 tools/check_desensitized.py`｜续接对话第一件事 = 跑它们
 
 - 性质：不参赛项目题 · 发布 GitHub **公开仓库** · 署名 yuluo554
 - 交付形态（唯一）：**单文件可执行 + 纯本地 CLI**（只读归档、零网络、零解压到磁盘、零运行时依赖）
 - 定位宣言："现有工具只做**单条规则检查**或**字段转储**，没有一个输出**谁会写出什么名字、谁覆盖谁、哪个工具会拒绝**。本工具是**提取结果预言机**：输入一个 ZIP/TAR，逐条目预言它在 {Windows 资源管理器, Info-ZIP unzip, 7-Zip, libarchive, Python zipfile, macOS Finder, Linux} 上会变成什么名字、是否被覆盖、是否应用层不可见、是否被拒绝。**提取预言机不是体检器。**"
 - 基准日：**2026-10-21**；代理实际检索窗口 **2026-10-19T18:35Z–19:10Z**（`data/README.md` §1 已原样记录）
-- 当前状态：**出题阶段完成**（`plan/00` + `plan/01` + `data/README.md` + 首提交；M1 未开工）
+- 当前状态：**M0 出题与骨架完成**（`plan/00–06` + `data/README.md` + 方法论装订 + 可运行骨架 + 生成器骨架 + CI 预置；M0–M6 未验证项保持 ⬜）；下一棒 = **M1 数据先行**（见 `plan/HANDOFF-M1.md`）
+- CI 状态：**未接远端，CI 待首推验证**（`plan/05` §五 U1）
 
 ---
 
@@ -18,16 +18,20 @@
 | `plan/00-README总览.md` | 本文档：索引 / 决策记录 / 弃选项 / 承诺-证据台账 / 招牌动词表 / 提交材料实物表 / 里程碑 | ✅ v1 |
 | `plan/01-题目文档.md` | 十段式题目定稿（介绍 / 五模块 / 提交材料 / 评分 / 锚点 / 边界） | ✅ v1 |
 | `data/README.md` | 依据查证三态 + 检索窗口 + 数据源可获取性 + 合成数据纪律 + **数值口径单一真相源（§4）** + **证据强度自评（§5）** | ✅ v1 |
-| `plan/02-架构与技术选型.md` | 分层、模块边界、构建链路、平台表数据契约、错误降级、确定性设计 | ⬜ M1 产出 |
-| `plan/03-模块详设.md` | 五模块的输入/输出/算法/误报控制/验收（模块数须与 `plan/01` 一致） | ⬜ M1 产出 |
-| `plan/04-数据计划.md` | fixture 清单、真值结构、真值纪律、数据落库节奏 | ⬜ M1 产出 |
-| `plan/05-里程碑与发布.md` | 逐里程碑 DoD、发布流程、状态表、已知未验证项、风险登记 | ⬜ M1 产出 |
-| `plan/06-交付对标与决策.md` | 评分对标、招牌动词兑现、缺口表 | ⬜ M1 产出 |
-| `src/extract_oracle/` | 解析 / 平台表 / 折叠 / 报告分模块 | ⬜ M2 起 |
-| `tools/gen_fixtures.py` | `struct.pack` fixture 生成器（零网络、可重复、逐字节一致） | ⬜ M1 |
+| `plan/02-架构与技术选型.md` | 分层、模块边界、构建链路、平台表数据契约、错误降级、确定性设计 | ✅ M0 |
+| `plan/03-模块详设.md` | 五模块的输入/输出/算法/误报控制/验收（模块数须与 `plan/01` 一致） | ✅ M0 |
+| `plan/04-数据计划.md` | fixture 清单、真值结构、真值纪律、数据落库节奏 | ✅ M0 |
+| `plan/05-里程碑与发布.md` | 逐里程碑 DoD、发布流程、状态表、已知未验证项、风险登记 | ✅ M0 |
+| `plan/06-交付对标与决策.md` | 评分对标、招牌动词兑现、缺口表 | ✅ M0 |
+| `AGENTS.md` | 仓库锚点：方法论 / 布局门命令 / 强制布局 / 硬纪律 / 环境事实 | ✅ M0 |
+| `src/extract_oracle/` | 解析 / 平台表 / 折叠 / 报告分模块（骨架期：字节层 + 报告层 + CLI 契约） | 🟡 M0 骨架；判定层 M2 起 |
+| `tools/gen_fixtures.py` | `struct.pack` fixture 生成器（零网络、可重复、逐字节一致） | 🟡 M0（6/22 份）；M1 补全 |
+| `tools/check_sprint_layout.py` | 布局门（方法论装订第②件） | ✅ M0 |
+| `tools/check_desensitized.py` | 脱敏门（发布前必跑，CI 同 job） | ✅ M0 |
+| `tests/` | 契约 / 确定性 / fixture 对账 / 门自身变异验证 | ✅ M0 起 |
 | `docs/rules.md` / `docs/divergence.md` | 规则原句 + 四工具分歧对照 | ⬜ M4/M6 |
-| `tests/` | fixture 真值、八组字符对回归、三平台折叠回归、交付态 e2e | ⬜ M1 起 |
-| `README.md` / `LICENSE` / `.gitignore` | 产品页 / MIT / Python 标准模板 | `.gitignore` ✅；README 与 LICENSE 待 M6 |
+| `README.md` / `LICENSE` / `.gitignore` | 产品页 / MIT / Python 标准模板 | ✅ M0 |
+| `scripts/build.py` | PyInstaller onefile 构建（版本自报断言） | 🟡 M0 脚本位；产物 M6 |
 | `plan/RELEASE-M6.md` | 发布留档（tag 时点 / tag 后追加 两栏） | ⬜ M6 |
 
 > 索引状态只在本表维护；`plan/01` 与 `data/README.md` 不重复登记状态。
@@ -84,7 +88,8 @@
 | 单文件可执行 | `scripts/build.py`（PyInstaller onefile） | `dist/extract-oracle.exe` | 干净环境直跑 + 交付态 e2e | ⬜ 待 M6 实现 |
 | 规则原句文档 | 规范原文逐条核对 | `docs/rules.md` | 每条规则带 URL 与原句，可逐条回到来源 | ⬜ 待 M4 产出 |
 | 四工具分歧对照 | 本机实测命令与输出 | `docs/divergence.md` | 每格附实测命令与输出节选 | ⬜ 待 M6 产出 |
-| fixture 生成器 | `struct.pack` 程序化构造 | `tools/gen_fixtures.py` | 重跑逐字节一致；不含真实用户文件 | ⬜ 待 M1 产出 |
+| fixture 生成器 | `struct.pack` 程序化构造 | `tools/gen_fixtures.py` | 重跑逐字节一致；不含真实用户文件 | 🟡 骨架 6/22 份；待 M1 补全 |
+| 方法论装订 | `AGENTS.md` + 布局门 + 脱敏门 + `plan/00` 顶部一行 | `tools/check_sprint_layout.py` / `tools/check_desensitized.py` | 布局门全绿 + 变异逐组变红（`tests/test_layout_gate.py`） | ✅ |
 
 ---
 
@@ -132,7 +137,7 @@
 
 | 里程碑 | 内容 | DoD | 状态 |
 |---|---|---|---|
-| M0 出题与骨架 | `plan/00` + `plan/01` + `data/README.md` + `.gitignore` + 中文首提交 | 十段式齐；三态齐；台账单一真相源；首提交经 `git log` 验证 | ✅ |
+| M0 出题与骨架 | `plan/00` + `plan/01` + `data/README.md` + `.gitignore` + 中文首提交；**方法论装订**（`AGENTS.md` + 布局门 + 脱敏门 + `plan/00` 顶部一行）；`plan/02–06`；可运行骨架（`src/`、`pyproject`、`scripts/build.py`）；生成器骨架；CI 预置 | 十段式齐；三态齐；台账单一真相源；首提交经 `git log` 验证；布局门全绿且变异可红；脱敏门 0 命中；`pytest` 全绿；`check` 未就绪时退出码 3 | ✅ |
 | **M1 数据先行** | `tools/gen_fixtures.py`（`struct.pack`）+ 全部 fixture 与真值 + **四工具对照表实测脚本** + `$UpCase` 取表脚本 | fixture 重跑逐字节一致；每个判定项至少一个 fixture 与一份真值；四工具对照表每格有实测命令与输出；`$UpCase` 表可取且记录卷标识 | ⬜ |
 | **M2 双头差分** | MOD-1 全部六条规则 + MOD-2 骨架（原始字节 + bit11 + extra 解析） | 四 fixture 各命中对应 code；三工具行为断言在 CI 三平台跑；退出码语义落地 | ⬜ |
 | **M3 折叠** | MOD-3：平台表 + `collision.*` + 写序→存活者 | `case.zip` 存活者正确；`norm.zip` 分平台结论正确；8 组字符对回归全通过 | ⬜ |

@@ -1,0 +1,11 @@
+* text=auto eol=lf
+
+# 字节形态本身就是被测对象（生成器逐字节自检、真值对账），git 不许碰：
+*.zip   binary
+*.epub  binary
+*.bin   binary
+
+# 显式冻结：这些文件被 sha256 登记或逐字节断言
+data/fixtures/*.zip   -text
+data/fixtures/*.epub  -text
+data/platforms/*.bin  -text

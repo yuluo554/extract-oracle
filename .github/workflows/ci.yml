@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  gate:
+    name: layout-and-desensitize
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Sprint layout gate
+        run: python tools/check_sprint_layout.py
+      - name: Desensitization gate
+        run: python tools/check_desensitized.py
+      - name: Layout gate selftest
+        run: python tools/check_sprint_layout.py --selftest
+
+  test:
+    name: test-py${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Fixture regeneration check
+        run: python tools/gen_fixtures.py --check
+      - name: Pytest
+        run: python -m pytest
+      - name: Console script smoke
+        run: |
+          extract-oracle --version
+          extract-oracle capabilities
+          extract-oracle inspect data/fixtures/clean.zip --format json

@@ -1,0 +1,13 @@
+{
+  "expected_accessibility": {
+    "linux": {},
+    "macos": {},
+    "windows": {
+      "colon:name.txt": "BLOCKED",
+      "trailing. ": "WRITTEN_TRUNCATED",
+      "trailingdot.": "WRITTEN_TRUNCATED"
+    }
+  },
+  "expected_findings": [],
+  "fixture": "trailing.zip"
+}

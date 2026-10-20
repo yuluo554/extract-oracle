@@ -1,0 +1,13 @@
+{
+  "expected_accessibility": {
+    "linux": {},
+    "macos": {},
+    "windows": {
+      "CON.txt": "WRITTEN_UNREADABLE",
+      "NUL.txt": "WRITTEN_UNREADABLE",
+      "aux.tar.gz": "WRITTEN_UNREADABLE"
+    }
+  },
+  "expected_findings": [],
+  "fixture": "reserved.zip"
+}
