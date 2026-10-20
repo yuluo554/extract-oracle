@@ -1,0 +1,7 @@
+{
+  "expected_findings": [
+    "container.MIMETYPE_PADDING"
+  ],
+  "fixture": "padding.epub",
+  "note": "mimetype 内容为 `application/epub+zip\\n`（EPUB 3.3 §4.3.3 明文禁止）"
+}

@@ -1,0 +1,7 @@
+{
+  "expected_findings": [
+    "container.MIMETYPE_COMPRESSED"
+  ],
+  "fixture": "compressed.epub",
+  "note": "mimetype 用 method=8（deflate）"
+}

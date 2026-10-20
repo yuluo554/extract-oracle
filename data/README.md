@@ -76,20 +76,27 @@
 
 → "文件存在但应用层拿不到"的最小可信证据；本题 MOD-4 的第三级 `WRITTEN_UNREADABLE` 由此而来。
 
-#### 1.3.3 NTFS 折叠 ≠ casefold / upper（8 组字符对）
+#### 1.3.3 NTFS 折叠 ≠ casefold / upper（8 组字符对，M1 已按机器实测复核）
 
-| 字符对 | casefold/upper 预测 | 实测 NTFS |
-|---|---|---|
-| `ı` / `I` | 冲突（simple_upper） | **不冲突** ✗ |
-| `ſ` / `S` | 冲突 | **不冲突** ✗ |
-| `ß` / `SS` | 冲突 | **不冲突** ✗ |
-| `ß` / `ss` | 冲突 | **不冲突** ✗ |
-| `İ` / `i` | — | **冲突** ✓ |
-| `ǅ` / `Ǆ` | — | **不冲突** ✗ |
-| `ω` / `Ω` | — | **冲突** ✓ |
-| （对照组，同字符不同写法） | 不冲突 | **不冲突** ✓ |
+| 字符对 | `upper()` 预测 | `casefold()` 预测 | 实测 NTFS（M0 记录） | 实测 NTFS（**M1 复核**） |
+|---|---|---|---|---|
+| `ı` / `I` | 冲突 | 不冲突 | 不冲突 | **不冲突** ✓ |
+| `ſ` / `S` | 冲突 | 不冲突 | 不冲突 | **不冲突** ✓ |
+| `ß` / `SS` | 冲突 | 不冲突 | 不冲突 | **不冲突** ✓ |
+| `ß` / `ss` | 冲突 | 冲突 | 不冲突 | **不冲突** ✓ |
+| `İ` / `i` | 不冲突 | 不冲突 | ~~冲突~~ | **不冲突** ✗（M0 记错，见下） |
+| `ǅ` / `Ǆ` | 冲突 | 冲突 | 不冲突 | **不冲突** ✓ |
+| `ω` / `Ω` | 冲突 | 冲突 | 冲突 | **冲突** ✓ |
+| `é` / `É`（对照组） | 冲突 | 冲突 | ~~不冲突~~ | **冲突** ✗（M0 对照组的取值不成立） |
 
-→ **所有现存工具都用 `str.lower()`/`casefold()` 近似 NTFS，会产生假阳性**。这条是 MOD-3 必须用真实 `$UpCase` 表的直接理由。
+**M1 复核方法**（`tools/fetch_upcase.py --source host-probe`）：在 NTFS 卷上先写 A、再以
+`CREATE_NEW` 建 B，`ERROR_ALREADY_EXISTS(183)`/`ERROR_FILE_EXISTS(80)` 即折叠。
+三种独立手段（`CreateFileW` / Python `open(...,'xb')` / bash `touch`）结论一致；
+机器可读结果在 `data/platforms/meta.json` 的 `ntfs_upcase.verification.pairs`。
+
+> **M0 那两格是错的，按实测改**（`plan/05` §五 U11）。但**结论方向不变、且更强**：
+> `ǅ/Ǆ` 上 `casefold` 判冲突而 NTFS 不冲突 → `str.lower()`/`casefold()` 近似会产出假阳性。
+> 这条仍是 MOD-3 必须用真实 `$UpCase` 表的直接理由（`plan/00` 决策 ③）。
 
 ### 1.4 规范原文（✅ 已核对；逐条对应关系见 `docs/rules.md`）
 
@@ -149,27 +156,31 @@
 | fixture | 构造要点 | 覆盖判定项 |
 |---|---|---|
 | `mismatch_name.zip` | LFH 名 `allowed.txt`，CD 名 `evil.txt`（长度相同便于构造） | `structure.NAME_DIVERGES` |
-| `alias_lfh.zip` | 名字一致，LFH 与 CD 的 general purpose flag 不同（bit 11） | `structure.FLAG_DIVERGES` |
-| `overlap.zip` | 两个 entry 的 LFH 记录区间物理相交 | `structure.LFH_OVERLAP` |
-| `wrong_count.zip` | EOCD 声明条目数 ≠ 实际 CD 条目数 | `structure.CD_COUNT_MISMATCH` |
-| `crc_diverge.zip` | LFH 与 CD 的 CRC32 不同 | `structure.CRC_DIVERGES` |
-| `size_diverge.zip` | LFH 与 CD 的 size 不同 | `structure.SIZE_DIVERGES` |
+| `alias_lfh.zip` | 名字一致，LFH flag=`0x0000` / CD flag=`0x0800`（bit 11） | `structure.FLAG_DIVERGES` |
+| `overlap.zip` | `a.txt` 的 payload **恰为** `b.txt` 的整条 `LFH+name+payload`，CD 里 `b.txt` 的 offset 落在 `a.txt` 数据区内；两侧 CRC/size 各自自洽 | `structure.LFH_OVERLAP` |
+| `wrong_count.zip` | EOCD 声明 5 条，实际 CD 2 条 | `structure.CD_COUNT_MISMATCH` |
+| `crc_diverge.zip` | CD 的 CRC32 为 LFH 的 CRC 翻转最低位 | `structure.CRC_DIVERGES` |
+| `size_diverge.zip` | CD 的 uncompressed size 比 LFH 多 7 | `structure.SIZE_DIVERGES` |
 | `zh_gbk.zip` | 无 bit11，名字为 GBK 编码的 `中文名.txt` | `encoding.candidates[]` 三提取器分歧 |
-| `upath.zip` | 无 bit11，带 0x7075 指向 `café.txt` | `upath` + `predictedNames`（7-Zip vs Python/unzip） |
-| `upath_badcrc.zip` | 0x7075 的 CRC 字段错误 | `upath_crc_mismatch` 降级 |
+| `upath.zip` | 无 bit11，原名字节是 GBK 的 `中文名.txt`，带 0x7075（CRC 按原名字节算，**有效**）指向 `café.txt` | 四工具一致写出 `café.txt`；`upath` 覆盖生效 |
+| `upath_badcrc.zip` | 同上但 0x7075 的 CRC 取反 → 覆盖失效 | `encoding.UPATH_CRC_MISMATCH` + 降级 `low` + **四方分歧** |
 | `case.zip` | `Readme.txt` + `README.TXT`，payload 分别为 `UPPER` / `LOWER` | `collision.CASEFOLD` + `survivor=README.TXT` |
 | `norm.zip` | NFC `café.txt` + NFD `café.txt` | `collision.NFC`（分平台结论相反） |
 | `trim.zip` | `readme.` + `readme` | `collision.TRIM` + `WRITTEN_TRUNCATED` |
-| `filedir.zip` | 同时有 `a`（文件）与 `a/b`（路径） | `collision.FILEDIR` |
-| `reserved.zip` | `CON.txt`、`NUL.txt`、`COM1.log`、`aux.tar.gz` | `WRITTEN_UNREADABLE` |
-| `trailing.zip` | `trailing. `、`trailingdot.`、`colon:name.txt` | `WRITTEN_TRUNCATED` |
+| `filedir.zip` | 同时有 `a`（文件）与 `a/b`（路径） | `collision.FILEDIR`（**三平台都报**，M1 实测） |
+| `reserved.zip` | `CON.txt`、`NUL.txt`、`aux.tar.gz` | `WRITTEN_UNREADABLE` ×2；`aux.tar.gz` 是**可读对照组** |
+| `trailing.zip` | `trailing. `、`trailingdot.`、`colon:name.txt` | 三条都是 `WRITTEN_TRUNCATED`（含 `:` 的 ADS 截断） |
 | `not_first.epub` | `mimetype` 不是首个条目 | `container.MIMETYPE_NOT_FIRST` |
-| `compressed.epub` | `mimetype` 被 deflate | `container.MIMETYPE_COMPRESSED` |
-| `extra.epub` | `mimetype` 带 extra field | `container.MIMETYPE_EXTRA` |
+| `compressed.epub` | `mimetype` 被 deflate（CRC 按**未压缩**内容算） | `container.MIMETYPE_COMPRESSED` |
+| `extra.epub` | `mimetype` 带 0xCAFE extra field | `container.MIMETYPE_EXTRA` |
 | `padding.epub` | `mimetype` 内容带尾随换行 | `container.MIMETYPE_PADDING`（`inferred`） |
-| `long_path.zip` | 解出的完整路径 >260 | `budget.PATH_OVER_260` |
-| `long_comp.zip` | 单组件 >255 字节 | `budget.COMPONENT_OVER_255` |
+| `long_path.zip` | 7 段 × 44 字节 = **314** 字节整路径（>260），各组件未超 255 | `budget.PATH_OVER_260`（**预算告警**，非本机截断：`LongPathsEnabled=1` 时可直接创建） |
+| `long_comp.zip` | 单组件 **256** 码元 | `budget.COMPONENT_OVER_255` + `BLOCKED`（本机实测创建即失败） |
 | `clean.zip` | 完全正常的两条目 | **零误报基线**（不得产生任何 finding） |
+
+> **真值键**（`data/fixtures/truth/<fixture>.json`）按 `tests/test_fixtures.py::ALLOWED_TRUTH_KEYS` 约束：
+> `expected_findings` 必填；`expected_collisions` / `expected_accessibility` / `expected_names` /
+> `expected_encoding` / `note` 按需出现。**"空"与"没写"是两件事**（§2 第 3 条）。
 
 ---
 
@@ -193,11 +204,17 @@
 
 | 级别 | 定义（唯一表述） |
 |---|---|
-| `BLOCKED` | 目标平台在创建时即失败：Linux 名含 `/`；Windows 名含 `< > : " / \ | ? *` 或 0x00–0x1F；名字为空或仅为 `.`/`..` |
-| `WRITTEN_UNREADABLE` | 创建成功但**应用层不可达**：Windows 保留设备名（CON/PRN/AUX/NUL/COM1-9/LPT1-9，**含带扩展名形式**，含上标 ¹²³） |
-| `WRITTEN_TRUNCATED` | 创建成功但**名字已变**：尾随空格/点被裁剪、组件超长被截断（Windows 260 / Linux 字节口径） |
+| `BLOCKED` | 目标平台在创建时即失败：Linux 名含 `/`；Windows 名含 `< > " / \ | ? *` 或 0x00–0x1F、或单个组件超 255 个 UTF-16 码元；名字为空或仅为 `.`/`..` |
+| `WRITTEN_UNREADABLE` | 创建成功但**应用层不可达**：Windows 保留设备名（CON/PRN/AUX/NUL/COM1-9/LPT1-9，含 `CLOCK$`）出现在**最后一个点之前**（`CON.txt`、`COM1.log`、`AUX.tar`，也含上标 ¹²³ 变体） |
+| `WRITTEN_TRUNCATED` | 创建成功但**名字已变**：尾随空格/点被裁剪（Windows）、`:` 被按 ADS 截断为冒号前的部分 |
 
 > `OK` 是第四种取值（无上述三情形的条目），但**不是"级别"**，不参与分级评分。
+>
+> **口径修订（2026-10-21，M1 本机实测，`plan/05` §五 U11）**：`data/README.md` 初版把
+> 「非法字符 `:`」与「组件超长」都归入 `BLOCKED`/`WRITTEN_TRUNCATED`，实测不成立：
+> - `colon:name.txt` **创建成功**，NTFS 按 ADS 语义把它存成 `colon`（名字变了，不是失败）；
+> - 单组件 256 字符 **`CreateFileW` 直接失败**（`ERROR_INVALID_NAME` 123），**加 `\\?\` 前缀也一样**；
+> - 保留名只按"最后一个点之前"整体匹配：`AUX.txt` 不可读，而 `AUX.tar.gz` **真可读**（区别于"含扩展名即保留"的初版表述）。
 
 ### 4.3 折叠规则来源与判据
 

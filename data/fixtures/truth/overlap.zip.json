@@ -1,0 +1,7 @@
+{
+  "expected_findings": [
+    "structure.LFH_OVERLAP"
+  ],
+  "fixture": "overlap.zip",
+  "note": "a.txt 的 payload 恰为 b.txt 的整条 LFH+name+payload，CD 里 b.txt 的 relative_offset=35 落在 a.txt 的数据区内（a 的记录区间 [0,86)）。两侧 CRC/size 各自自洽 → 不夹带 CRC/SIZE 反差。本机实测：Python `zipfile` 抛 `BadZipFile: Overlapped entries`；unzip/7-Zip/bsdtar 均 rc=0 正常解出两个文件 → 分歧方向是「一个拒绝、三个照解」"
+}

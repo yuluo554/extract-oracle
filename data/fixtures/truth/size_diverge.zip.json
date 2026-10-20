@@ -1,0 +1,7 @@
+{
+  "expected_findings": [
+    "structure.SIZE_DIVERGES"
+  ],
+  "fixture": "size_diverge.zip",
+  "note": "CD 的 uncompressed size 比 LFH 多 7"
+}

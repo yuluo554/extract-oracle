@@ -6,7 +6,7 @@
 - 交付形态（唯一）：**单文件可执行 + 纯本地 CLI**（只读归档、零网络、零解压到磁盘、零运行时依赖）
 - 定位宣言："现有工具只做**单条规则检查**或**字段转储**，没有一个输出**谁会写出什么名字、谁覆盖谁、哪个工具会拒绝**。本工具是**提取结果预言机**：输入一个 ZIP/TAR，逐条目预言它在 {Windows 资源管理器, Info-ZIP unzip, 7-Zip, libarchive, Python zipfile, macOS Finder, Linux} 上会变成什么名字、是否被覆盖、是否应用层不可见、是否被拒绝。**提取预言机不是体检器。**"
 - 基准日：**2026-10-21**；代理实际检索窗口 **2026-10-19T18:35Z–19:10Z**（`data/README.md` §1 已原样记录）
-- 当前状态：**M0 出题与骨架完成**（`plan/00–06` + `data/README.md` + 方法论装订 + 可运行骨架 + 生成器骨架 + CI 预置 + 发布就绪门；M0–M6 未验证项保持 ⬜）；下一棒 = **M1 数据先行**（见 `plan/HANDOFF-M1.md`）
+- 当前状态：**M1 数据先行完成**（22/22 fixture + 真值、`$UpCase` 表（带卷标识与真实卷校验）、22×4 四工具对照矩阵、`docs/rules.md` 骨架；M0–M6 未验证项保持 ⬜）；下一棒 = **M2 双头差分**（见 `plan/HANDOFF-M2.md`）
 - **可上传状态**：发布就绪门（`py -3.12 tools/check_publish_ready.py`）8 条判据全绿，含 `git bundle verify` 推送包自证 → **仓库本身现在就能推**；**远端尚未创建**（建仓是显式对外动作，命令见 `plan/05` §四 第 0 步）
 - CI 状态：**未接远端，CI 待首推验证**（`plan/05` §五 U1）
 
@@ -26,13 +26,17 @@
 | `plan/06-交付对标与决策.md` | 评分对标、招牌动词兑现、缺口表 | ✅ M0 |
 | `AGENTS.md` | 仓库锚点：方法论 / 布局门命令 / 强制布局 / 硬纪律 / 环境事实 | ✅ M0 |
 | `src/extract_oracle/` | 解析 / 平台表 / 折叠 / 报告分模块（骨架期：字节层 + 报告层 + CLI 契约） | 🟡 M0 骨架；判定层 M2 起 |
-| `tools/gen_fixtures.py` | `struct.pack` fixture 生成器（零网络、可重复、逐字节一致） | 🟡 M0（6/22 份）；M1 补全 |
+| `tools/gen_fixtures.py` | `struct.pack` fixture 生成器（零网络、可重复、逐字节一致） | ✅ 22/22 份 |
+| `tools/fetch_upcase.py` | 取 NTFS `$UpCase` 折叠表（`volume-read` / `host-probe` 双通道 + 真实卷校验） | ✅ M1 |
+| `tools/probe_tools.py` | 四工具行为对照（可重跑，落 `data/tool-matrix/`） | ✅ M1 |
 | `tools/check_sprint_layout.py` | 布局门（方法论装订第②件） | ✅ M0 |
 | `tools/check_desensitized.py` | 脱敏门（发布前必跑，CI 同 job） | ✅ M0 |
 | `tools/check_publish_ready.py` | 发布就绪门（可上传性 P1–P8；**不判是否已发布**） | ✅ M0 |
 | `tools/bootstrap_remote.py` | 建仓 + 首推 + sha 对账 + CI run 回读（默认 dry-run） | ✅ M0 |
-| `tests/` | 契约 / 确定性 / fixture 对账 / 门自身变异验证 | ✅ M0 起 |
-| `docs/rules.md` / `docs/divergence.md` | 规则原句 + 四工具分歧对照 | ⬜ M4/M6 |
+| `tests/` | 契约 / 确定性 / fixture 对账 / 门自身变异验证 / M1 数据产物 | ✅ M0 起；M1 加 `test_m1_data.py` |
+| `docs/rules.md` | 规则原句台账（14 行 × URL × 原句） | 🟡 M1 骨架；M4 定稿 |
+| `docs/divergence.md` | 四工具分歧对照定稿（中间产物在 `data/tool-matrix/`） | ⬜ M6 |
+| `data/platforms/` | NTFS `$UpCase` 表 + 平台元数据 | ✅ M1 |
 | `README.md` / `LICENSE` / `.gitignore` | 产品页 / MIT / Python 标准模板 | ✅ M0 |
 | `scripts/build.py` | PyInstaller onefile 构建（版本自报断言） | 🟡 M0 脚本位；产物 M6 |
 | `scripts/entry.py` | 冻结态入口（**绝对导入**薄壳；PyInstaller 把入口当顶层脚本，相对导入必崩） | ✅ M0 |
@@ -80,7 +84,7 @@
 | 双头差分（LFH vs CD） | 自建 `mismatch_name.zip` 等；依据 libarchive#2695 实现选择 | `structure.*` 六条规则 | 四 fixture 各命中对应 code + 三工具行为断言进 CI | ⬜ 待 MOD-1（M2）实现 |
 | 重叠与计数检测 | 自建 `overlap.zip` / `wrong_count.zip` | `structure.LFH_OVERLAP` / `CD_COUNT_MISMATCH` | 物理区间相交判定 + EOCD/实际计数比对 | ⬜ 待 MOD-1（M2）实现 |
 | 编码推断与 0x7075 解析 | 自建 `zh_gbk.zip` / `upath.zip`；APPNOTE 镜像 D.2/D.6 | `encoding.candidates[]` + `upath` + `predictedNames` | 三提取器预测互不相同，且与实测一致 | ⬜ 待 MOD-2（M2/M5）实现 |
-| 真实 NTFS 折叠表 | 真实 `$UpCase`（卷读取或真机探测）；8 组字符对实测 | 平台表数据文件 + `collision.CASEFOLD` | 8 组回归全通过；近似法在同样字符对上判错 | ⬜ 待 MOD-3（M3）实现 |
+| 真实 NTFS 折叠表 | 真实 `$UpCase`（本机 OS 上折叠表 65536 项 + 真实卷写入碰撞校验）；8 组字符对复核 | 平台表数据文件 + `collision.CASEFOLD` | 表 sha256 与本体一致；8 组字符对「表预测 = 卷实测」；`casefold` 在同样字符对上判错 | 🟡 表已就位；**判定未落地**（M3） |
 | NFC/NFD 跨平台差异 | UAX #15 + TN1150 + libfsapfs（中硬） | `collision.NFC` + 平台表 | `norm.zip` 在 Windows 不报、macOS 必报 | ⬜ 待 MOD-3（M3）实现 |
 | 写序→存活者预测 | 四工具实测（后写覆盖） | `collisions[].writeOrder` / `survivor` | `case.zip` 预测 `README.TXT` 存活且内容为 `LOWER` | ⬜ 待 MOD-3（M3）实现 |
 | 三级可访问性分级 | `CON.txt` 实测三证据；Windows 命名规范原文 | `accessibility` + `reasons[]` + `evidence[]` | `CON.txt`→`WRITTEN_UNREADABLE`；`trailing.`→`WRITTEN_TRUNCATED` | ⬜ 待 MOD-4（M4）实现 |
@@ -90,9 +94,9 @@
 | 零网络 | 形态本身 | 无 http 客户端依赖 | 静态扫描（无网络库导入）+ 断网 e2e | ⬜ 待 M2 落地 |
 | 确定性导出 | 报告模块 | JSON/文本双导出 | 同输入双跑 byte 级一致（无时间戳/随机 ID/绝对路径） | ⬜ 待 M5 实现 |
 | 单文件可执行 | `scripts/build.py`（PyInstaller onefile） | `dist/extract-oracle.exe` | 干净环境直跑 + 交付态 e2e | ⬜ 待 M6 实现 |
-| 规则原句文档 | 规范原文逐条核对 | `docs/rules.md` | 每条规则带 URL 与原句，可逐条回到来源 | ⬜ 待 M4 产出 |
-| 四工具分歧对照 | 本机实测命令与输出 | `docs/divergence.md` | 每格附实测命令与输出节选 | ⬜ 待 M6 产出 |
-| fixture 生成器 | `struct.pack` 程序化构造 | `tools/gen_fixtures.py` | 重跑逐字节一致；不含真实用户文件 | 🟡 骨架 6/22 份；待 M1 补全 |
+| 规则原句文档 | 规范原文逐条核对 | `docs/rules.md` | 每条规则带 URL 与原句，可逐条回到来源 | 🟡 骨架 14 行；5 行原句待 M4 回填 |
+| 四工具分歧对照 | 本机实测命令与输出 | `data/tool-matrix/*.json`（中间产物）→ `docs/divergence.md` | 每格附实测命令与输出节选；可重跑脚本重跑一致 | 🟡 已落 22×4 格；M6 定稿 |
+| fixture 生成器 | `struct.pack` 程序化构造 | `tools/gen_fixtures.py` | 重跑逐字节一致；不含真实用户文件 | ✅ 22/22 份（M1） |
 | 方法论装订 | `AGENTS.md` + 布局门 + 脱敏门 + `plan/00` 顶部一行 | `tools/check_sprint_layout.py` / `tools/check_desensitized.py` | 布局门全绿 + 变异逐组变红（`tests/test_layout_gate.py`） | ✅ |
 | **可上传 GitHub** | 仓库结构 + 门 + 建仓脚本 | `tools/check_publish_ready.py`（P1–P8）/ `tools/bootstrap_remote.py` | 发布就绪门全绿（含 `git bundle verify` 推送包自证）+ 11 组变异逐组变红 | ✅（**仓库本身可推**；远端尚未创建，见 `plan/05` U1） |
 
@@ -143,7 +147,7 @@
 | 里程碑 | 内容 | DoD | 状态 |
 |---|---|---|---|
 | M0 出题与骨架 | `plan/00` + `plan/01` + `data/README.md` + `.gitignore` + 中文首提交；**方法论装订**（`AGENTS.md` + 布局门 + 脱敏门 + `plan/00` 顶部一行）；`plan/02–06`；可运行骨架（`src/`、`pyproject`、`scripts/build.py`）；生成器骨架；CI 预置 | 十段式齐；三态齐；台账单一真相源；首提交经 `git log` 验证；布局门全绿且变异可红；脱敏门 0 命中；`pytest` 全绿；`check` 未就绪时退出码 3 | ✅ |
-| **M1 数据先行** | `tools/gen_fixtures.py`（`struct.pack`）+ 全部 fixture 与真值 + **四工具对照表实测脚本** + `$UpCase` 取表脚本 | fixture 重跑逐字节一致；每个判定项至少一个 fixture 与一份真值；四工具对照表每格有实测命令与输出；`$UpCase` 表可取且记录卷标识 | ⬜ |
+| **M1 数据先行** | `tools/gen_fixtures.py`（`struct.pack`）+ 全部 fixture 与真值 + **四工具对照表实测脚本** + `$UpCase` 取表脚本 | fixture 重跑逐字节一致（22/22）；每个判定项至少一个 fixture 与一份真值；四工具对照表每格有实测命令与输出（22×4）；`$UpCase` 表可取且记录卷标识、探测环境、sha256 | ✅ |
 | **M2 双头差分** | MOD-1 全部六条规则 + MOD-2 骨架（原始字节 + bit11 + extra 解析） | 四 fixture 各命中对应 code；三工具行为断言在 CI 三平台跑；退出码语义落地 | ⬜ |
 | **M3 折叠** | MOD-3：平台表 + `collision.*` + 写序→存活者 | `case.zip` 存活者正确；`norm.zip` 分平台结论正确；8 组字符对回归全通过 | ⬜ |
 | **M4 可访问性** | MOD-4 三级分级 + `docs/rules.md` | `CON.txt`→`WRITTEN_UNREADABLE` 附三证据；`trailing.`→`WRITTEN_TRUNCATED`；保留名边界全绿；每条规则可回原句 | ⬜ |
@@ -170,12 +174,23 @@
 
 ---
 
-## 八、交接语（下一棒 = sprint M1）
+## 八、交接语（下一棒 = sprint M2）
 
 题目已定稿于 `plan/01-题目文档.md`，口径单点定义在 `data/README.md` §4，台账与里程碑见本文档 §三/§六。
 
-**M1 只做数据与对照表，不写产品逻辑**，交付四样：`tools/gen_fixtures.py`（全部 fixture 由 `struct.pack` 合成，重跑逐字节一致）、每项一份真值、**四工具对照表实测脚本与落盘结果**（Python `zipfile` / Info-ZIP `unzip` / 7-Zip / libarchive，每格附命令与输出）、`$UpCase` 取表脚本（记录卷标识与探测环境）。
+**M1（已收口）**交付四样全部落地：`tools/gen_fixtures.py`（22/22 份 fixture 由 `struct.pack` 合成，
+`--check` 重生成逐字节一致）、22 份真值、**四工具对照矩阵**（`tools/probe_tools.py` 可重跑，
+22×4 格每格带命令/退出码/落盘名/输出节选，落 `data/tool-matrix/`）、`$UpCase` 取表脚本
+（`tools/fetch_upcase.py`，`host_probe` 通道，带卷标识、探测环境、sha256 与 8 组真实卷校验）。
+另加 `docs/rules.md` 骨架（14 行 × URL × 原句）。
 
-M1 的三条硬约束：**① 不得用 casefold 近似任何折叠判定**；**② 不得引"规范要求 LFH/CD 一致"**（规范没有，只引实现选择）；**③ 不得下载任何真实归档**（零网络）。
+**M1 推翻了三条初版口径**（`plan/05` §五 U11/U12，`docs/rules.md` §三 有汇总）：
+`:` 不会让创建失败（NTFS 按 ADS 截断）、保留名只按"最后一个点之前"匹配（`aux.tar.gz` 可读）、
+单组件 256 码元创建即失败（`BLOCKED`）。**M2–M5 的判定必须按这些实测口径写。**
+
+M1 的三条硬约束继续适用于后续里程碑：**① 不得用 casefold 近似任何折叠判定**；**② 不得引"规范要求
+LFH/CD 一致"**（规范没有，只引实现选择）；**③ 不得下载任何真实归档**（零网络）。
+
+**M2 只做双头差分**（MOD-1 六条 + MOD-2 骨架），待办清单见 `plan/HANDOFF-M2.md` §3。
 
 发布类里程碑（M6）DoD 三件套不裁剪：**tag + Release 附产物（本地留副本 + sha256）+ `plan/RELEASE-M6.md` 留档（tag 之前落盘，两栏）**。

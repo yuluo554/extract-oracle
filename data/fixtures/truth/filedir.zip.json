@@ -1,0 +1,22 @@
+{
+  "expected_collisions": {
+    "linux": [
+      {
+        "code": "collision.FILEDIR"
+      }
+    ],
+    "macos": [
+      {
+        "code": "collision.FILEDIR"
+      }
+    ],
+    "windows": [
+      {
+        "code": "collision.FILEDIR"
+      }
+    ]
+  },
+  "expected_findings": [],
+  "fixture": "filedir.zip",
+  "note": "`a` 是文件而 `a/b` 要求 `a` 作目录。本机四工具实测**三个平台都表现为失败**（Python 抛 FileNotFoundError、unzip rc=2 'a exists but is not directory'、7-Zip rc=2、只有 bsdtar 把 `a` 转成目录再写 `a/b`）——所以 `collision.FILEDIR` 三平台都报，`plan` 初版只写 windows/macos 是按「大小写不敏感卷」推的，实测不成立"
+}

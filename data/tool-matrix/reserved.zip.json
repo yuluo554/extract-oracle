@@ -1,0 +1,61 @@
+{
+  "agreement": {
+    "distinct_written_sets": 2,
+    "refused": [],
+    "tools_agree": false,
+    "unavailable": []
+  },
+  "cells": {
+    "7zip": {
+      "command": "7z x -y -o<workdir>/out <fixture>",
+      "exit_code": 0,
+      "output_excerpt": "7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03\nScanning the drive for archives:\n1 file, 334 bytes (1 KiB)\nExtracting archive: <path>\n--\nPath = <path>",
+      "status": "ok",
+      "written": [
+        "_CON.txt",
+        "_NUL.txt",
+        "_aux.tar.gz"
+      ]
+    },
+    "info-zip-unzip": {
+      "command": "unzip -o <fixture> -d <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "Archive:  <path>\n extracting: <workdir>\\out/CON.txt\n extracting: <workdir>\\out/NUL.txt\n extracting: <workdir>\\out/aux.tar.gz",
+      "status": "ok",
+      "written": [
+        "CON.txt",
+        "NUL.txt",
+        "aux.tar.gz"
+      ]
+    },
+    "libarchive": {
+      "command": "bsdtar -x -f <fixture> -C <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "CON.txt",
+        "NUL.txt",
+        "aux.tar.gz"
+      ]
+    },
+    "python-zipfile": {
+      "command": "python -m zipfile -e <fixture> <workdir>/out",
+      "exit_code": 0,
+      "namelist": [
+        "CON.txt",
+        "NUL.txt",
+        "aux.tar.gz"
+      ],
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "CON.txt",
+        "NUL.txt",
+        "aux.tar.gz"
+      ]
+    }
+  },
+  "fixture": "reserved.zip",
+  "schema_version": "1"
+}

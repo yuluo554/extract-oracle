@@ -1,0 +1,7 @@
+{
+  "expected_findings": [
+    "structure.FLAG_DIVERGES"
+  ],
+  "fixture": "alias_lfh.zip",
+  "note": "LFH flag=0x0000 / CD flag=0x0800，差异位为 bit 11"
+}

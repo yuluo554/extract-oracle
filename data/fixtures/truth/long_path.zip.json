@@ -1,0 +1,12 @@
+{
+  "expected_accessibility": {
+    "linux": {},
+    "macos": {},
+    "windows": {}
+  },
+  "expected_findings": [
+    "budget.PATH_OVER_260"
+  ],
+  "fixture": "long_path.zip",
+  "note": "整路径 314 字节（>260 含终止 NUL）；组件各 44 字节未超 255。本机 LongPathsEnabled=1 实测可直接创建（`plan/05` §五 U12），因此 `budget.PATH_OVER_260` 是**可移植性预算告警**，不是本机截断事实"
+}

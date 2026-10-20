@@ -13,18 +13,30 @@ import gen_fixtures  # noqa: E402
 FIXTURE_DIR = Path(__file__).resolve().parent.parent / "data" / "fixtures"
 TRUTH_DIR = FIXTURE_DIR / "truth"
 
-#: 真值文件只允许这些键（出现 `observed_*` 即红——真值禁观测）。
+#: fixture 产物的扩展名（`.epub` 自 M1 起由生成器产出，仍是 ZIP 容器）。
+FIXTURE_SUFFIXES = {".zip", ".epub"}
+
+#: 真值文件只允许这些键（出现 `observed_*` 即红——真值禁观测，K01）。
+#:
+#: 扩键**必须先改这里**：M1 加了 `expected_encoding`（编码推断的期望）与
+#: `expected_names`（四工具落盘名的期望）——两者都是"输入 + 期望"，不承载观测值。
 ALLOWED_TRUTH_KEYS = {
     "fixture",
     "expected_findings",
     "expected_collisions",
     "expected_accessibility",
+    "expected_encoding",
+    "expected_names",
     "note",
 }
 
 
 def _truth_files() -> list[Path]:
     return sorted(TRUTH_DIR.glob("*.json"))
+
+
+def _fixture_files() -> list[Path]:
+    return sorted(p for p in FIXTURE_DIR.iterdir() if p.is_file() and p.suffix in FIXTURE_SUFFIXES)
 
 
 def test_generator_roundtrip_is_byte_identical():
@@ -37,11 +49,18 @@ def test_generator_roundtrip_is_byte_identical():
 
 
 def test_every_fixture_has_truth_and_vice_versa():
-    on_disk = {p.name for p in FIXTURE_DIR.glob("*.zip")}
-    for name, _ in gen_fixtures.BUILDERS.items():
+    on_disk = {p.name for p in _fixture_files()}
+    for name in gen_fixtures.BUILDERS:
         assert name in on_disk, f"缺 fixture: {name}"
     orphans = sorted(p.name for p in _truth_files() if p.stem not in gen_fixtures.BUILDERS)
     assert orphans == [], f"孤儿真值: {orphans}"
+
+
+def test_no_orphan_fixture_files():
+    """反向：盘上不得有生成器不认领的产物（手放进去的样本不算数）。"""
+
+    orphans = sorted(p.name for p in _fixture_files() if p.name not in gen_fixtures.BUILDERS)
+    assert orphans == [], f"孤儿产物: {orphans}"
 
 
 def test_truth_holds_input_and_expectation_only():
@@ -64,11 +83,15 @@ def test_expectation_keys_are_explicit():
 
 
 def test_pending_fixtures_are_not_silently_shipped():
-    """生成器登记的待落地样本不得出现在目录里（否则是'手放进去的'）。"""
+    """生成器登记的待落地样本不得出现在目录里（否则是'手放进去的'）。
 
-    on_disk = {p.name for p in FIXTURE_DIR.glob("*") if p.is_file() and p.suffix in {".zip", ".epub"}}
+    M1 收尾后 `PENDING == []`，本测试变成"反向空跑自证"：
+    若有人把 PENDING 加回来却已把文件放进仓里，这里仍然会红。
+    """
+
+    on_disk = {p.name for p in _fixture_files()}
     leaked = sorted(name for name in gen_fixtures.PENDING if name in on_disk)
-    assert leaked == [], f"待 M1 的样本提前入仓: {leaked}"
+    assert leaked == [], f"待落地的样本提前入仓: {leaked}"
 
 
 def test_clean_fixture_is_zero_finding_baseline():

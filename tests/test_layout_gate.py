@@ -141,8 +141,26 @@ def test_gap_description_column_is_not_the_gap_column(sandbox: Path):
     assert "LAYOUT.GAPS" not in _fails(out), out
 
 
-def test_m4_delete_next_handoff_is_red(sandbox: Path):
+def test_m4_delete_done_milestone_handoff_is_red(sandbox: Path):
+    """M4（M1 起的形态）：删掉**已 ✅ 里程碑**的交接单 → `LAYOUT.HANDOFFS` 红。
+
+    M0 期这条靶子是 `HANDOFF-M1`（M0 被豁免、M1 是"下一棒"）→ 判据落在 `HANDOFF_NEXT`。
+    M1 落地后 `HANDOFF-M1` 变成"已 ✅ 里程碑的收尾记录" → 判据落在 `LAYOUT.HANDOFFS`。
+    **两个判据都要有各自能红的靶子**，所以这里改成断言后者，另加一条断言前者。
+    """
+
     (sandbox / "plan" / "HANDOFF-M1.md").unlink()
+    code, out = _run_gate(sandbox)
+    assert code == 1
+    assert "LAYOUT.HANDOFFS" in _fails(out)
+    # 这条不该由 HANDOFF_NEXT 兜住（下一棒 = M2，与 M1 的交接单无关）
+    assert "LAYOUT.HANDOFF_NEXT" not in _fails(out)
+
+
+def test_m4_delete_next_handoff_is_red(sandbox: Path):
+    """`LAYOUT.HANDOFF_NEXT` 自己的靶子：删"下一棒"（M2）的交接单。"""
+
+    (sandbox / "plan" / "HANDOFF-M2.md").unlink()
     code, out = _run_gate(sandbox)
     assert code == 1
     assert "LAYOUT.HANDOFF_NEXT" in _fails(out)

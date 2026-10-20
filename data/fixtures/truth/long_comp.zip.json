@@ -1,0 +1,14 @@
+{
+  "expected_accessibility": {
+    "linux": {},
+    "macos": {},
+    "windows": {
+      "<long>": "BLOCKED"
+    }
+  },
+  "expected_findings": [
+    "budget.COMPONENT_OVER_255"
+  ],
+  "fixture": "long_comp.zip",
+  "note": "单组件 256 字节。本机实测 `CreateFileW` 直接失败（ERROR_INVALID_NAME 123），**加 `\\\\?\\` 前缀也一样**——所以按 §4.2「创建时即失败」判 `BLOCKED`，不是 `WRITTEN_TRUNCATED`。`plan/03` MOD-4 第 6 步把「组件超长」写成截断，M4 必须按本条实测裁决"
+}

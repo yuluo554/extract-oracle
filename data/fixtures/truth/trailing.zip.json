@@ -3,11 +3,12 @@
     "linux": {},
     "macos": {},
     "windows": {
-      "colon:name.txt": "BLOCKED",
+      "colon:name.txt": "WRITTEN_TRUNCATED",
       "trailing. ": "WRITTEN_TRUNCATED",
       "trailingdot.": "WRITTEN_TRUNCATED"
     }
   },
   "expected_findings": [],
-  "fixture": "trailing.zip"
+  "fixture": "trailing.zip",
+  "note": "`trailing. `/`trailingdot.` 被裁掉尾随点+空格存成 `trailing`/`trailingdot`；`colon:name.txt` **创建并不失败**——NTFS 按 ADS 语义只写冒号前的 `colon`（名字变了=TRUNCATED）。§4.2 初版把 `:` 归入 BLOCKED 是错的（`plan/05` §五 U11）"
 }

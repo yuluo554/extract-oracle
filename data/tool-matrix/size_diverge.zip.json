@@ -1,0 +1,51 @@
+{
+  "agreement": {
+    "distinct_written_sets": 1,
+    "refused": [],
+    "tools_agree": true,
+    "unavailable": []
+  },
+  "cells": {
+    "7zip": {
+      "command": "7z x -y -o<workdir>/out <fixture>",
+      "exit_code": 2,
+      "output_excerpt": "7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03\nScanning the drive for archives:\n1 file, 124 bytes (1 KiB)\nExtracting archive: <path>\n--\nPath = <path>",
+      "status": "failed",
+      "written": [
+        "size.txt"
+      ]
+    },
+    "info-zip-unzip": {
+      "command": "unzip -o <fixture> -d <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "Archive:  <path>\n extracting: <workdir>\\out/size.txt",
+      "status": "ok",
+      "written": [
+        "size.txt"
+      ]
+    },
+    "libarchive": {
+      "command": "bsdtar -x -f <fixture> -C <workdir>/out",
+      "exit_code": 1,
+      "output_excerpt": "tar.exe: Inconsistent uncompressed size: 17 in central directory, 10 in local header\ntar.exe: Error exit delayed from previous errors.",
+      "status": "ok",
+      "written": [
+        "size.txt"
+      ]
+    },
+    "python-zipfile": {
+      "command": "python -m zipfile -e <fixture> <workdir>/out",
+      "exit_code": 0,
+      "namelist": [
+        "size.txt"
+      ],
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "size.txt"
+      ]
+    }
+  },
+  "fixture": "size_diverge.zip",
+  "schema_version": "1"
+}

@@ -1,0 +1,69 @@
+{
+  "agreement": {
+    "distinct_written_sets": 1,
+    "refused": [],
+    "tools_agree": true,
+    "unavailable": []
+  },
+  "cells": {
+    "7zip": {
+      "command": "7z x -y -o<workdir>/out <fixture>",
+      "exit_code": 0,
+      "output_excerpt": "7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03\nScanning the drive for archives:\n1 file, 451 bytes (1 KiB)\nExtracting archive: <path>\n--\nPath = <path>",
+      "status": "ok",
+      "written": [
+        "META-INF/",
+        "META-INF/container.xml",
+        "OEBPS/",
+        "OEBPS/content.xhtml",
+        "mimetype"
+      ]
+    },
+    "info-zip-unzip": {
+      "command": "unzip -o <fixture> -d <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "Archive:  <path>\n extracting: <workdir>\\out/mimetype\n extracting: <workdir>\\out/META-INF/container.xml\n extracting: <workdir>\\out/OEBPS/content.xhtml",
+      "status": "ok",
+      "written": [
+        "META-INF/",
+        "META-INF/container.xml",
+        "OEBPS/",
+        "OEBPS/content.xhtml",
+        "mimetype"
+      ]
+    },
+    "libarchive": {
+      "command": "bsdtar -x -f <fixture> -C <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "META-INF/",
+        "META-INF/container.xml",
+        "OEBPS/",
+        "OEBPS/content.xhtml",
+        "mimetype"
+      ]
+    },
+    "python-zipfile": {
+      "command": "python -m zipfile -e <fixture> <workdir>/out",
+      "exit_code": 0,
+      "namelist": [
+        "mimetype",
+        "META-INF/container.xml",
+        "OEBPS/content.xhtml"
+      ],
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "META-INF/",
+        "META-INF/container.xml",
+        "OEBPS/",
+        "OEBPS/content.xhtml",
+        "mimetype"
+      ]
+    }
+  },
+  "fixture": "padding.epub",
+  "schema_version": "1"
+}

@@ -1,0 +1,55 @@
+{
+  "agreement": {
+    "distinct_written_sets": 3,
+    "refused": [],
+    "tools_agree": false,
+    "unavailable": []
+  },
+  "cells": {
+    "7zip": {
+      "command": "7z x -y -o<workdir>/out <fixture>",
+      "exit_code": 0,
+      "output_excerpt": "7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03\nScanning the drive for archives:\n1 file, 226 bytes (1 KiB)\nExtracting archive: <path>\n--\nPath = <path>",
+      "status": "ok",
+      "written": [
+        "readme",
+        "readme_"
+      ]
+    },
+    "info-zip-unzip": {
+      "command": "unzip -o <fixture> -d <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "Archive:  <path>\n extracting: <workdir>\\out/readme.\n extracting: <workdir>\\out/readme",
+      "status": "ok",
+      "written": [
+        "readme",
+        "readme."
+      ]
+    },
+    "libarchive": {
+      "command": "bsdtar -x -f <fixture> -C <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "readme",
+        "readme."
+      ]
+    },
+    "python-zipfile": {
+      "command": "python -m zipfile -e <fixture> <workdir>/out",
+      "exit_code": 0,
+      "namelist": [
+        "readme.",
+        "readme"
+      ],
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "readme"
+      ]
+    }
+  },
+  "fixture": "trim.zip",
+  "schema_version": "1"
+}

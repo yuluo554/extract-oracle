@@ -1,0 +1,56 @@
+{
+  "agreement": {
+    "distinct_written_sets": 3,
+    "refused": [],
+    "tools_agree": false,
+    "unavailable": []
+  },
+  "cells": {
+    "7zip": {
+      "command": "7z x -y -o<workdir>/out <fixture>",
+      "exit_code": 0,
+      "output_excerpt": "7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03\nScanning the drive for archives:\n1 file, 236 bytes (1 KiB)\nExtracting archive: <path>\n--\nPath = <path>",
+      "status": "ok",
+      "written": [
+        "cafe虂.txt",
+        "caf茅.txt"
+      ]
+    },
+    "info-zip-unzip": {
+      "command": "unzip -o <fixture> -d <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "Archive:  <path>\n extracting: <workdir>\\out/caf+�.txt\n extracting: <workdir>\\out/cafe��.txt",
+      "status": "ok",
+      "written": [
+        "caf+®.txt",
+        "cafe¦ü.txt"
+      ]
+    },
+    "libarchive": {
+      "command": "bsdtar -x -f <fixture> -C <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "cafe虂.txt",
+        "caf茅.txt"
+      ]
+    },
+    "python-zipfile": {
+      "command": "python -m zipfile -e <fixture> <workdir>/out",
+      "exit_code": 0,
+      "namelist": [
+        "caf├⌐.txt",
+        "cafe╠ü.txt"
+      ],
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "cafe╠ü.txt",
+        "caf├⌐.txt"
+      ]
+    }
+  },
+  "fixture": "norm.zip",
+  "schema_version": "1"
+}

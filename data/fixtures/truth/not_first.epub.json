@@ -1,0 +1,7 @@
+{
+  "expected_findings": [
+    "container.MIMETYPE_NOT_FIRST"
+  ],
+  "fixture": "not_first.epub",
+  "note": "META-INF/container.xml 排在 mimetype 之前"
+}

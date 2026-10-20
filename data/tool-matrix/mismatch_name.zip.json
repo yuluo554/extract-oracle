@@ -1,0 +1,50 @@
+{
+  "agreement": {
+    "distinct_written_sets": 3,
+    "refused": [
+      "python-zipfile"
+    ],
+    "tools_agree": false,
+    "unavailable": []
+  },
+  "cells": {
+    "7zip": {
+      "command": "7z x -y -o<workdir>/out <fixture>",
+      "exit_code": 2,
+      "output_excerpt": "7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03\nScanning the drive for archives:\n1 file, 127 bytes (1 KiB)\nExtracting archive: <path>\n--\nPath = <path>",
+      "status": "failed",
+      "written": [
+        "allowed.txt"
+      ]
+    },
+    "info-zip-unzip": {
+      "command": "unzip -o <fixture> -d <workdir>/out",
+      "exit_code": 1,
+      "output_excerpt": "Archive:  <path>\n extracting: <workdir>\\out/evil.txt\nevil.txt:  mismatching \"local\" filename (allowed.txt),\n         continuing with \"central\" filename version",
+      "status": "ok",
+      "written": [
+        "evil.txt"
+      ]
+    },
+    "libarchive": {
+      "command": "bsdtar -x -f <fixture> -C <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "allowed.txt"
+      ]
+    },
+    "python-zipfile": {
+      "command": "python -m zipfile -e <fixture> <workdir>/out",
+      "error": "BadZipFile: File name in directory 'evil.txt' and header b'allowed.txt' differ.",
+      "exit_code": null,
+      "namelist": null,
+      "output_excerpt": "",
+      "status": "refused",
+      "written": []
+    }
+  },
+  "fixture": "mismatch_name.zip",
+  "schema_version": "1"
+}

@@ -1,0 +1,21 @@
+{
+  "expected_encoding": {
+    "bit11": false,
+    "confidence": "low",
+    "upath": {
+      "crc_valid": false,
+      "present": true
+    }
+  },
+  "expected_findings": [
+    "encoding.UPATH_CRC_MISMATCH"
+  ],
+  "expected_names": {
+    "7zip": "中文名.txt",
+    "info-zip-unzip": "Íð+-+¹.txt",
+    "libarchive": "中文名.txt",
+    "python-zipfile": "╓╨╬─├√.txt"
+  },
+  "fixture": "upath_badcrc.zip",
+  "note": "0x7075 的 CRC 取反 → 覆盖失效并降级 low；四方分歧：CP437 两种 + GBK 两种"
+}

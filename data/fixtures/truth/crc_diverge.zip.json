@@ -1,0 +1,7 @@
+{
+  "expected_findings": [
+    "structure.CRC_DIVERGES"
+  ],
+  "fixture": "crc_diverge.zip",
+  "note": "CD 的 CRC 为 LFH 的 CRC 翻转最低位"
+}

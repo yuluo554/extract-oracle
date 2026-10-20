@@ -1,0 +1,20 @@
+{
+  "expected_encoding": {
+    "bit11": false,
+    "confidence": "high",
+    "upath": {
+      "crc_valid": true,
+      "present": true,
+      "utf8_name": "café.txt"
+    }
+  },
+  "expected_findings": [],
+  "expected_names": {
+    "7zip": "café.txt",
+    "info-zip-unzip": "café.txt",
+    "libarchive": "café.txt",
+    "python-zipfile": "café.txt"
+  },
+  "fixture": "upath.zip",
+  "note": "原名字节为 GBK 的 中文名.txt；0x7075 的 CRC 按原名字节校验通过 → 四工具一致写出 café.txt"
+}

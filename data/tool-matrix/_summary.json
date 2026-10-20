@@ -1,0 +1,688 @@
+{
+  "fixtures": [
+    "alias_lfh.zip",
+    "case.zip",
+    "clean.zip",
+    "compressed.epub",
+    "crc_diverge.zip",
+    "extra.epub",
+    "filedir.zip",
+    "long_comp.zip",
+    "long_path.zip",
+    "mismatch_name.zip",
+    "norm.zip",
+    "not_first.epub",
+    "overlap.zip",
+    "padding.epub",
+    "reserved.zip",
+    "size_diverge.zip",
+    "trailing.zip",
+    "trim.zip",
+    "upath.zip",
+    "upath_badcrc.zip",
+    "wrong_count.zip",
+    "zh_gbk.zip"
+  ],
+  "rows": [
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 1,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "alias_lfh.zip",
+      "tools_agree": true,
+      "written": {
+        "7zip": [
+          "same.txt"
+        ],
+        "info-zip-unzip": [
+          "same.txt"
+        ],
+        "libarchive": [
+          "same.txt"
+        ],
+        "python-zipfile": [
+          "same.txt"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 2,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "case.zip",
+      "tools_agree": false,
+      "written": {
+        "7zip": [
+          "README.TXT"
+        ],
+        "info-zip-unzip": [
+          "README.TXT"
+        ],
+        "libarchive": [
+          "README.TXT"
+        ],
+        "python-zipfile": [
+          "Readme.txt"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "clean.zip",
+      "tools_agree": true,
+      "written": {
+        "7zip": [
+          "alpha.txt",
+          "beta.txt"
+        ],
+        "info-zip-unzip": [
+          "alpha.txt",
+          "beta.txt"
+        ],
+        "libarchive": [
+          "alpha.txt",
+          "beta.txt"
+        ],
+        "python-zipfile": [
+          "alpha.txt",
+          "beta.txt"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "compressed.epub",
+      "tools_agree": true,
+      "written": {
+        "7zip": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ],
+        "info-zip-unzip": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ],
+        "libarchive": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ],
+        "python-zipfile": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 2,
+        "info-zip-unzip": 0,
+        "libarchive": 1,
+        "python-zipfile": null
+      },
+      "fixture": "crc_diverge.zip",
+      "tools_agree": true,
+      "written": {
+        "7zip": [
+          "crc.txt"
+        ],
+        "info-zip-unzip": [
+          "crc.txt"
+        ],
+        "libarchive": [
+          "crc.txt"
+        ],
+        "python-zipfile": [
+          "crc.txt"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "extra.epub",
+      "tools_agree": true,
+      "written": {
+        "7zip": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ],
+        "info-zip-unzip": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ],
+        "libarchive": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ],
+        "python-zipfile": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 2,
+      "exit_codes": {
+        "7zip": 2,
+        "info-zip-unzip": 2,
+        "libarchive": 0,
+        "python-zipfile": null
+      },
+      "fixture": "filedir.zip",
+      "tools_agree": false,
+      "written": {
+        "7zip": [
+          "a"
+        ],
+        "info-zip-unzip": [
+          "a"
+        ],
+        "libarchive": [
+          "a/",
+          "a/b"
+        ],
+        "python-zipfile": [
+          "a"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 2,
+        "info-zip-unzip": 50,
+        "libarchive": 1,
+        "python-zipfile": null
+      },
+      "fixture": "long_comp.zip",
+      "tools_agree": true,
+      "written": {
+        "7zip": [],
+        "info-zip-unzip": [],
+        "libarchive": [],
+        "python-zipfile": []
+      }
+    },
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "long_path.zip",
+      "tools_agree": true,
+      "written": {
+        "7zip": [
+          "dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd"
+        ],
+        "info-zip-unzip": [
+          "dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd"
+        ],
+        "libarchive": [
+          "dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd"
+        ],
+        "python-zipfile": [
+          "dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/",
+          "dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd/dddddddddddddddddddddddddddddddddddddddddddd"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 3,
+      "exit_codes": {
+        "7zip": 2,
+        "info-zip-unzip": 1,
+        "libarchive": 0,
+        "python-zipfile": null
+      },
+      "fixture": "mismatch_name.zip",
+      "tools_agree": false,
+      "written": {
+        "7zip": [
+          "allowed.txt"
+        ],
+        "info-zip-unzip": [
+          "evil.txt"
+        ],
+        "libarchive": [
+          "allowed.txt"
+        ],
+        "python-zipfile": []
+      }
+    },
+    {
+      "distinct_written_sets": 3,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "norm.zip",
+      "tools_agree": false,
+      "written": {
+        "7zip": [
+          "cafe虂.txt",
+          "caf茅.txt"
+        ],
+        "info-zip-unzip": [
+          "caf+®.txt",
+          "cafe¦ü.txt"
+        ],
+        "libarchive": [
+          "cafe虂.txt",
+          "caf茅.txt"
+        ],
+        "python-zipfile": [
+          "cafe╠ü.txt",
+          "caf├⌐.txt"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "not_first.epub",
+      "tools_agree": true,
+      "written": {
+        "7zip": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "mimetype"
+        ],
+        "info-zip-unzip": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "mimetype"
+        ],
+        "libarchive": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "mimetype"
+        ],
+        "python-zipfile": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "mimetype"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 2,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": null
+      },
+      "fixture": "overlap.zip",
+      "tools_agree": false,
+      "written": {
+        "7zip": [
+          "a.txt",
+          "b.txt"
+        ],
+        "info-zip-unzip": [
+          "a.txt",
+          "b.txt"
+        ],
+        "libarchive": [
+          "a.txt",
+          "b.txt"
+        ],
+        "python-zipfile": []
+      }
+    },
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "padding.epub",
+      "tools_agree": true,
+      "written": {
+        "7zip": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ],
+        "info-zip-unzip": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ],
+        "libarchive": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ],
+        "python-zipfile": [
+          "META-INF/",
+          "META-INF/container.xml",
+          "OEBPS/",
+          "OEBPS/content.xhtml",
+          "mimetype"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 2,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "reserved.zip",
+      "tools_agree": false,
+      "written": {
+        "7zip": [
+          "_CON.txt",
+          "_NUL.txt",
+          "_aux.tar.gz"
+        ],
+        "info-zip-unzip": [
+          "CON.txt",
+          "NUL.txt",
+          "aux.tar.gz"
+        ],
+        "libarchive": [
+          "CON.txt",
+          "NUL.txt",
+          "aux.tar.gz"
+        ],
+        "python-zipfile": [
+          "CON.txt",
+          "NUL.txt",
+          "aux.tar.gz"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 2,
+        "info-zip-unzip": 0,
+        "libarchive": 1,
+        "python-zipfile": 0
+      },
+      "fixture": "size_diverge.zip",
+      "tools_agree": true,
+      "written": {
+        "7zip": [
+          "size.txt"
+        ],
+        "info-zip-unzip": [
+          "size.txt"
+        ],
+        "libarchive": [
+          "size.txt"
+        ],
+        "python-zipfile": [
+          "size.txt"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 3,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "trailing.zip",
+      "tools_agree": false,
+      "written": {
+        "7zip": [
+          "colon_name.txt",
+          "trailing__",
+          "trailingdot_"
+        ],
+        "info-zip-unzip": [
+          "colon_name.txt",
+          "trailing. ",
+          "trailingdot."
+        ],
+        "libarchive": [
+          "colon_name.txt",
+          "trailing. ",
+          "trailingdot."
+        ],
+        "python-zipfile": [
+          "colon_name.txt",
+          "trailing",
+          "trailingdot"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 3,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "trim.zip",
+      "tools_agree": false,
+      "written": {
+        "7zip": [
+          "readme",
+          "readme_"
+        ],
+        "info-zip-unzip": [
+          "readme",
+          "readme."
+        ],
+        "libarchive": [
+          "readme",
+          "readme."
+        ],
+        "python-zipfile": [
+          "readme"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "upath.zip",
+      "tools_agree": true,
+      "written": {
+        "7zip": [
+          "café.txt"
+        ],
+        "info-zip-unzip": [
+          "café.txt"
+        ],
+        "libarchive": [
+          "café.txt"
+        ],
+        "python-zipfile": [
+          "café.txt"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 3,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "upath_badcrc.zip",
+      "tools_agree": false,
+      "written": {
+        "7zip": [
+          "中文名.txt"
+        ],
+        "info-zip-unzip": [
+          "Íð+-+¹.txt"
+        ],
+        "libarchive": [
+          "中文名.txt"
+        ],
+        "python-zipfile": [
+          "╓╨╬─├√.txt"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 1,
+      "exit_codes": {
+        "7zip": 2,
+        "info-zip-unzip": 3,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "wrong_count.zip",
+      "tools_agree": true,
+      "written": {
+        "7zip": [
+          "alpha.txt",
+          "beta.txt"
+        ],
+        "info-zip-unzip": [
+          "alpha.txt",
+          "beta.txt"
+        ],
+        "libarchive": [
+          "alpha.txt",
+          "beta.txt"
+        ],
+        "python-zipfile": [
+          "alpha.txt",
+          "beta.txt"
+        ]
+      }
+    },
+    {
+      "distinct_written_sets": 3,
+      "exit_codes": {
+        "7zip": 0,
+        "info-zip-unzip": 0,
+        "libarchive": 0,
+        "python-zipfile": 0
+      },
+      "fixture": "zh_gbk.zip",
+      "tools_agree": false,
+      "written": {
+        "7zip": [
+          "中文名.txt"
+        ],
+        "info-zip-unzip": [
+          "Íð+-+¹.txt"
+        ],
+        "libarchive": [
+          "中文名.txt"
+        ],
+        "python-zipfile": [
+          "╓╨╬─├√.txt"
+        ]
+      }
+    }
+  ],
+  "schema_version": "1",
+  "tool_versions": {
+    "7zip": "7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03",
+    "info-zip-unzip": "UnZip 6.00 of 20 April 2009, by Info-ZIP.  Maintained by C. Spieler.  Send",
+    "libarchive": "bsdtar 3.8.4 - libarchive 3.8.4 zlib/1.2.13.1-motley liblzma/5.8.1 bz2lib/1.0.8 libzstd/1.5.7 cng/2.0 libb2/bundled",
+    "python-zipfile": "Python 3.12.10 (stdlib zipfile)"
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "ntfs_upcase": {
+    "encoding": "uint16-le",
+    "entries": 65536,
+    "generator_version": "1",
+    "probe_host": {
+      "arch": "AMD64",
+      "os_build": "10.0.26200"
+    },
+    "probed_at_utc": "2026-10-20T17:04:12Z",
+    "sha256": "41c26bc7a12bdaeb26025c93118697c7e3ef81ee048b00fe5cce2a472e0e0742",
+    "source": "host_probe",
+    "verification": {
+      "method": "write_collision_on_real_volume",
+      "pairs": [
+        {
+          "first": "ı",
+          "first_codepoints": [
+            305
+          ],
+          "fs_says_collide": false,
+          "second": "I",
+          "second_codepoints": [
+            73
+          ],
+          "table_says_collide": false
+        },
+        {
+          "first": "ſ",
+          "first_codepoints": [
+            383
+          ],
+          "fs_says_collide": false,
+          "second": "S",
+          "second_codepoints": [
+            83
+          ],
+          "table_says_collide": false
+        },
+        {
+          "first": "ß",
+          "first_codepoints": [
+            223
+          ],
+          "fs_says_collide": false,
+          "second": "SS",
+          "second_codepoints": [
+            83,
+            83
+          ],
+          "table_says_collide": false
+        },
+        {
+          "first": "ß",
+          "first_codepoints": [
+            223
+          ],
+          "fs_says_collide": false,
+          "second": "ss",
+          "second_codepoints": [
+            115,
+            115
+          ],
+          "table_says_collide": false
+        },
+        {
+          "first": "ǅ",
+          "first_codepoints": [
+            453
+          ],
+          "fs_says_collide": false,
+          "second": "Ǆ",
+          "second_codepoints": [
+            452
+          ],
+          "table_says_collide": false
+        },
+        {
+          "first": "ω",
+          "first_codepoints": [
+            969
+          ],
+          "fs_says_collide": true,
+          "second": "Ω",
+          "second_codepoints": [
+            937
+          ],
+          "table_says_collide": true
+        },
+        {
+          "first": "é",
+          "first_codepoints": [
+            233
+          ],
+          "fs_says_collide": true,
+          "second": "É",
+          "second_codepoints": [
+            201
+          ],
+          "table_says_collide": true
+        },
+        {
+          "first": "a",
+          "first_codepoints": [
+            97
+          ],
+          "fs_says_collide": true,
+          "second": "A",
+          "second_codepoints": [
+            65
+          ],
+          "table_says_collide": true
+        }
+      ],
+      "pairs_agree": 8,
+      "pairs_checked": 8
+    },
+    "volume": {
+      "label": "新加卷",
+      "max_component": 255,
+      "ntfs_version": "NTFS",
+      "serial_hex": "445ED634"
+    }
+  },
+  "tables": {
+    "linux": {
+      "evidence_strength": "measured",
+      "source": "pathname(7)"
+    },
+    "macos": {
+      "evidence_strength": "medium",
+      "note": "实现观察，非 Apple 官方规范（plan/00 决策 ④）",
+      "source": "libfsapfs + TN1150 + UAX #15"
+    }
+  }
+}

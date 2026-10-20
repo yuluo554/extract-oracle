@@ -1,0 +1,7 @@
+{
+  "expected_findings": [
+    "structure.CD_COUNT_MISMATCH"
+  ],
+  "fixture": "wrong_count.zip",
+  "note": "EOCD 声明 5 条，实际 CD 2 条"
+}

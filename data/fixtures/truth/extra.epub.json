@@ -1,0 +1,7 @@
+{
+  "expected_findings": [
+    "container.MIMETYPE_EXTRA"
+  ],
+  "fixture": "extra.epub",
+  "note": "mimetype 带 0xCAFE extra field"
+}

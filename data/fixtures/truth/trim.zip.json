@@ -1,0 +1,23 @@
+{
+  "expected_accessibility": {
+    "linux": {},
+    "macos": {},
+    "windows": {
+      "readme": "OK",
+      "readme.": "WRITTEN_TRUNCATED"
+    }
+  },
+  "expected_collisions": {
+    "linux": [],
+    "macos": [],
+    "windows": [
+      {
+        "code": "collision.TRIM",
+        "survivor": "readme"
+      }
+    ]
+  },
+  "expected_findings": [],
+  "fixture": "trim.zip",
+  "note": "`readme.` 裁剪为 `readme` 后与 `readme` 相撞；两条目 `survivor` 都是 `readme`。注意：`unzip` 用 POSIX 语义真写出了 `readme.`（一个带点的独立文件），所以本条的 TRIM 是**Windows 目标**的折叠结论，不是 unzip 的落盘事实"
+}

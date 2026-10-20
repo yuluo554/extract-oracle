@@ -51,6 +51,8 @@ py -3.12 tools/check_desensitized.py
 | 发布就绪门（可上传性） | `py -3.12 tools/check_publish_ready.py` |
 | 建仓 + 首推（默认 dry-run） | `py -3.12 tools/bootstrap_remote.py --repo <owner>/<repo>` |
 | fixture 自检 | `py -3.12 tools/gen_fixtures.py --check` |
+| 重取 `$UpCase` 表 | `py -3.12 tools/fetch_upcase.py --source host-probe` |
+| 四工具对照矩阵 | `py -3.12 tools/probe_tools.py` / `--check` |
 | 测试 | `py -3.12 -m pytest` |
 | 结构事实 | `py -3.12 -m extract_oracle inspect <zip>`（需先 `pip install -e .`） |
 | 能力状态 | `py -3.12 -m extract_oracle capabilities` |

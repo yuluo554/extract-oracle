@@ -1,0 +1,53 @@
+{
+  "agreement": {
+    "distinct_written_sets": 2,
+    "refused": [
+      "python-zipfile"
+    ],
+    "tools_agree": false,
+    "unavailable": []
+  },
+  "cells": {
+    "7zip": {
+      "command": "7z x -y -o<workdir>/out <fixture>",
+      "exit_code": 0,
+      "output_excerpt": "7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03\nScanning the drive for archives:\n1 file, 204 bytes (1 KiB)\nExtracting archive: <path>\n--\nPath = <path>",
+      "status": "ok",
+      "written": [
+        "a.txt",
+        "b.txt"
+      ]
+    },
+    "info-zip-unzip": {
+      "command": "unzip -o <fixture> -d <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "Archive:  <path>\n extracting: <workdir>\\out/a.txt\n extracting: <workdir>\\out/b.txt",
+      "status": "ok",
+      "written": [
+        "a.txt",
+        "b.txt"
+      ]
+    },
+    "libarchive": {
+      "command": "bsdtar -x -f <fixture> -C <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "a.txt",
+        "b.txt"
+      ]
+    },
+    "python-zipfile": {
+      "command": "python -m zipfile -e <fixture> <workdir>/out",
+      "error": "BadZipFile: Overlapped entries: 'a.txt' (possible zip bomb)",
+      "exit_code": null,
+      "namelist": null,
+      "output_excerpt": "",
+      "status": "refused",
+      "written": []
+    }
+  },
+  "fixture": "overlap.zip",
+  "schema_version": "1"
+}

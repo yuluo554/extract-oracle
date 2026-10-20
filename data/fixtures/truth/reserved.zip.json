@@ -5,9 +5,10 @@
     "windows": {
       "CON.txt": "WRITTEN_UNREADABLE",
       "NUL.txt": "WRITTEN_UNREADABLE",
-      "aux.tar.gz": "WRITTEN_UNREADABLE"
+      "aux.tar.gz": "OK"
     }
   },
   "expected_findings": [],
-  "fixture": "reserved.zip"
+  "fixture": "reserved.zip",
+  "note": "保留名按「最后一个点之前」整体匹配：`CON.txt`/`NUL.txt` 不可读，而 `aux.tar.gz` 的最后一段是 `gz`、`aux.tar` 不是保留名 → **真可读**（本机 PowerShell `Test-Path`=True）。初版 §4.2 的「含扩展名即保留」被本条实测否掉（`plan/05` §五 U11）"
 }

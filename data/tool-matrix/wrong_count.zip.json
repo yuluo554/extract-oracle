@@ -1,0 +1,56 @@
+{
+  "agreement": {
+    "distinct_written_sets": 1,
+    "refused": [],
+    "tools_agree": true,
+    "unavailable": []
+  },
+  "cells": {
+    "7zip": {
+      "command": "7z x -y -o<workdir>/out <fixture>",
+      "exit_code": 2,
+      "output_excerpt": "7-Zip 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03\nScanning the drive for archives:\n1 file, 228 bytes (1 KiB)\nExtracting archive: <path>\n--\nPath = <path>",
+      "status": "failed",
+      "written": [
+        "alpha.txt",
+        "beta.txt"
+      ]
+    },
+    "info-zip-unzip": {
+      "command": "unzip -o <fixture> -d <workdir>/out",
+      "exit_code": 3,
+      "output_excerpt": "Archive:  <path>\n extracting: <workdir>\\out/alpha.txt\n extracting: <workdir>\\out/beta.txt\nerror:  expected central file header signature not found (file #3).\n  (please check that you have transferred or created the zipfile in the\n  appropriate BINARY mode and that you have compiled UnZip properly)",
+      "status": "failed",
+      "written": [
+        "alpha.txt",
+        "beta.txt"
+      ]
+    },
+    "libarchive": {
+      "command": "bsdtar -x -f <fixture> -C <workdir>/out",
+      "exit_code": 0,
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "alpha.txt",
+        "beta.txt"
+      ]
+    },
+    "python-zipfile": {
+      "command": "python -m zipfile -e <fixture> <workdir>/out",
+      "exit_code": 0,
+      "namelist": [
+        "alpha.txt",
+        "beta.txt"
+      ],
+      "output_excerpt": "",
+      "status": "ok",
+      "written": [
+        "alpha.txt",
+        "beta.txt"
+      ]
+    }
+  },
+  "fixture": "wrong_count.zip",
+  "schema_version": "1"
+}

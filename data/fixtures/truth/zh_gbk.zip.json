@@ -1,0 +1,14 @@
+{
+  "expected_encoding": {
+    "bit11": false,
+    "candidates_include": [
+      "CP437",
+      "GBK"
+    ],
+    "decoded_expected": "中文名.txt",
+    "preferred": "GBK"
+  },
+  "expected_findings": [],
+  "fixture": "zh_gbk.zip",
+  "note": "GBK 字节 d6d0 cec4 c3fb；CP437 下解为乱码，GBK 下得原名"
+}
