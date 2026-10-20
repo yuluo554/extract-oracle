@@ -97,7 +97,6 @@ M1 的本机实测（`plan/05` §五 U11）推翻了 `data/README.md` 与 `plan/
 - [ ] APFS 行必须在正文里重复写"实现观察，非 Apple 官方规范"（`plan/00` 决策 ④）
 
 ## 六、M2 落地时的依据核对（2026-10-21）
-
 MOD-1 的六条规则已全部落地，每条 finding 都带 `precedent`。这里记下**落地时逐条核对的结果**，
 因为"有 `precedent` 字段"和"`precedent` 写对了"是两件事：
 
@@ -121,3 +120,33 @@ MOD-1 的六条规则已全部落地，每条 finding 都带 `precedent`。这�
    与 unzip 的"取 CD 名并照解"是**同一读头选择下的两种严格度**。
 2. `plan/03` §MOD-2 原验收句"`upath.zip` 7-Zip 出 `café.txt` 而 Python/unzip 出 `caf茅.txt`"**不成立**——
    0x7075 CRC 有效时四工具一致写出 `café.txt`。要展示编码分歧得用 `upath_badcrc.zip`。
+
+---
+
+## 七、M3 落地时的依据核对（2026-10-21）
+
+MOD-3 的四条规则已全部落地（`rules/fold.py`）。**"有 `evidence_strength` 字段"与"强度标对了"
+是两件事**，所以逐条记下落地时用的是哪一种依据、以及哪一条**不能**升级成更强语气：
+
+| `ruleId` | 落地用的依据 | 核对结果 |
+|---|---|---|
+| `collision.CASEFOLD`（Windows 侧） | **本机 `$UpCase` 表**（`data/platforms/ntfs-upcase.bin`，`source=host_probe`）+ 8 组真实卷写入碰撞校验 | ✅ 表对 `/`（U+002F）与 BMP 外码点是恒等映射 → 整串折叠不会串组件（`tests/test_m3_platforms.py` 与 `test_fold.py` 钉住）。输出 `evidence_strength: table_simulated`——判据是**表 + 目标平台**，不是"我们恰好在 Windows 上跑"（R6：不得把表模拟写成实测） |
+| `collision.CASEFOLD`（macOS 侧） | **不落地**（返回空） | ⚠️ 这是一处**收窄**：上表 #4 的 libfsapfs 观察只说"**大小写不敏感卷**先 lower-case"——大小写是否折叠是**卷格式属性**；而 `meta.json` 里没有 macOS 折叠表。用 `lower()` 近似违反决策 ③，所以**不猜**。理由与绑定位置写在 `data/README.md` §4.3 与 `plan/05` §五 U15 |
+| `collision.NFC`（macOS 侧） | 上表 #2（UAX #15）+ #3（TN1150 "fully decomposed and in canonical order"）+ #4（libfsapfs，**实现观察，非 Apple 官方规范**） | ✅ 输出 `evidence_strength: medium`，`evidence.note` 逐字写"实现观察，非 Apple 官方规范"（决策 ④）。**依据强度不因落地而升级** |
+| `collision.NFC`（Windows/Linux 侧） | 上表 #1 的反向（"the file system treats path and file names as an opaque sequence of WCHARs"） | ✅ **不做归一化**：`norm.zip --target windows` 必须报 0 条（`plan/03` §MOD-3 验收行） |
+| `collision.TRIM` | 上表 #1（MS Learn：尾随空格与尾随点） | ✅ 仅 Windows。判据是"**裁剪后逐字节相等**"，与 CASEFOLD 构成划分（见下） |
+| `collision.FILEDIR` | 结构自证（同一路径既是文件又要求作目录）+ M1 四工具实测 | ✅ 三平台都报（`data/README.md` §3.2 的 `filedir.zip` 行）；**不是**"大小写不敏感卷"的推论——那是 `plan` 初版表述，M1 实测否掉 |
+
+**两条落地时定死的分工纪律**（数值/口径在 `data/README.md` §4.3，这里只记依据）：
+
+1. **CASEFOLD 与 TRIM 是划分不是两次计数**：两者都以 `trim` 后的名字为比较基准，但
+   "裁剪后逐字节相同"的对子**只归 TRIM**、CASEFOLD 跳过。这样一对名字不会被两条规则重复计数，
+   而"全部输出"（跨规则不短路）依然成立——`a`+`A`+`a/b` 在 Windows 上同时给出
+   `CASEFOLD(a,A)` 与两条 `FILEDIR`。
+2. **FILEDIR 的路径比较走平台等价形**（`fold(trim())` / NFD / 逐字节）：否则
+   `A`（文件）挡住 `a/b`（目录）这条在 Windows 上会漏报。
+
+**禁令复核**：四条规则的 `message` / `evidence` 里逐字检索「规范要求」「spec requires」
+「Apple 官方规范」，只在 macOS 的 `note` 里出现**否定形**（"非 Apple 官方规范"）。
+判据在 `tests/test_fold.py::test_norm_zip_macos_reports_nfc`（断言该串必须出现）
+与 `data/README.md` §4.3（断言收窄理由留痕）。

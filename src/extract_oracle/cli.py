@@ -3,7 +3,7 @@
 子命令：
 - `inspect <archive>`：报 EOCD / CD / LFH 三层结构事实 + 名字层事实（**不是判定**，不产 `ruleId`）；
 - `capabilities`：列出五模块落地状态；
-- `platforms --verify`：平台表完整性占位（M3 实现真表后才有内容）；
+- `platforms --verify`：平台表完整性校验（真校验：`sha256` 对账 + `source` 枚举 + 表指纹）；
 - `check <archive> --target {windows,macos,linux}`：**判定入口**。判定层未就绪时按
   `data/README.md` §4.1 返回退出码 3（`capability_missing`），**绝不产出空 findings**。
 
@@ -22,9 +22,13 @@ from . import __version__
 from .capabilities import MODULES, missing_core
 from .errors import OracleError, ReasonCode
 from .exit_codes import ExitCode
-from .findings import display_name, sort_findings
+from .findings import Collision, Finding, display_name, sort_collisions, sort_findings
+from .platforms import PlatformTables
+from .platforms import load as load_platforms
+from .platforms import verify as verify_platforms
 from .report import SCHEMA_VERSION, dumps_json, render_text, write_atomic
 from .rules import encoding as encoding_rules
+from .rules import fold as fold_rules
 from .rules import structure as structure_rules
 from .zip_reader import Archive, read_archive
 
@@ -70,6 +74,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     platforms_cmd = sub.add_parser("platforms", help="平台表操作")
     platforms_cmd.add_argument("--verify", action="store_true", help="校验平台表完整性并打印表指纹")
+    platforms_cmd.add_argument(
+        "--dir", type=Path, default=None, help="平台表目录（默认自动定位 data/platforms）"
+    )
+    platforms_cmd.add_argument("--format", choices=("json", "text"), default="text")
+    platforms_cmd.add_argument("--out", type=Path, default=None)
 
     return parser
 
@@ -126,11 +135,25 @@ def _parse_modules(values: Sequence[str] | None) -> list[str] | None:
     return picked
 
 
-def _run_module(name: str, archive: Archive) -> tuple:
-    """按模块名分派到判定层。未实现的模块在 `cmd_check` 里已被拒（走不到这里）。"""
+def _run_module(
+    name: str,
+    archive: Archive,
+    targets: list[str],
+    tables: PlatformTables,
+) -> tuple[tuple[Finding, ...], tuple[Collision, ...]]:
+    """按模块名分派到判定层。未实现的模块在 `cmd_check` 里已被拒（走不到这里）。
+
+    返回 `(findings, collisions)`：MOD-3 的输出形状是 `Collision`（`plan/01` §2 模块③），
+    其余四模块是 `Finding`。形状契约都在包根 `findings.py`——判定层之间互不 import（K10）。
+    """
 
     if name == "structure":
-        return structure_rules.check(archive)
+        return structure_rules.check(archive), ()
+    if name == "fold":
+        # MOD-3 消费的是"名字集合 + 目标平台 + 平台表"，由调用方组装后传入
+        # （`plan/02` §二：判定模块之间不 import，也不做模块级全局单例）。
+        assert tables is not None  # noqa: S101 - cmd_check 已保证（fold 必带表）
+        return (), fold_rules.check(archive, targets, tables)
     raise AssertionError(f"未分派的模块: {name}")  # pragma: no cover - 门在 cmd_check
 
 
@@ -252,10 +275,20 @@ def cmd_check(args: argparse.Namespace) -> int:
             )
         scope = requested
 
-    findings = []
+    findings: list[Finding] = []
+    collisions: list[Collision] = []
+    # 平台表按需加载：只有本次范围含 `fold` 且目标里有平台依赖时才读表。
+    # 表缺/校验失败 = `platform_table_missing`（退出码 3），**不静默跳过该平台的折叠判定**。
+    tables: PlatformTables | None = None
+    if "fold" in scope and any(name in targets for name in fold_rules.PLATFORMS):
+        tables = load_platforms()
+
     for name in scope:
-        findings.extend(_run_module(name, archive))
-    findings = [item.to_dict() for item in sort_findings(findings)]
+        module_findings, module_collisions = _run_module(name, archive, targets, tables)
+        findings.extend(module_findings)
+        collisions.extend(module_collisions)
+    ordered_findings = sort_findings(findings)
+    ordered_collisions = sort_collisions(collisions)
 
     payload = {
         "tool_version": __version__,
@@ -265,14 +298,22 @@ def cmd_check(args: argparse.Namespace) -> int:
         "targets": targets,
         "modules": scope,
         "entries": _entry_facts(archive),
-        "findings": findings,
-        "collisions": [],
-        "summary": {"entry_count": len(archive.entries), "finding_count": len(findings)},
+        "findings": [item.to_dict() for item in ordered_findings],
+        "collisions": [item.to_dict() for item in ordered_collisions],
+        "platforms": tables.to_report_dict() if tables is not None else None,
+        "summary": {
+            "entry_count": len(archive.entries),
+            "finding_count": len(ordered_findings),
+            "collision_count": len(ordered_collisions),
+        },
     }
     text = dumps_json(payload) if args.format == "json" else render_text(payload)
     _emit(payload, text, args.out)
-    # `data/README.md` §4.1：0 = 无 finding，1 = 有 finding。空 findings 才允许退 0。
-    return int(ExitCode.FINDINGS if findings else ExitCode.OK)
+    # `data/README.md` §4.1：0 = 无 finding，1 = 有 finding。空结果才允许退 0；
+    # `collisions` 与 `findings` 同为判定产出，命中即 1（否则 `case.zip` 会退 0 而报告里有冲突）。
+    return int(
+        ExitCode.FINDINGS if (ordered_findings or ordered_collisions) else ExitCode.OK
+    )
 
 
 def cmd_capabilities(_: argparse.Namespace) -> int:
@@ -285,13 +326,45 @@ def cmd_capabilities(_: argparse.Namespace) -> int:
 
 
 def cmd_platforms(args: argparse.Namespace) -> int:
+    """`platforms --verify`：**真校验**（`plan/02` §四 三条契约 + K04）。
+
+    校验不过抛 `platform_table_missing`（退出码 3），**不静默使用**；过了就打表指纹 + 卷标识。
+    输出面是诊断（人读 + `--format json`），**不进任何 `check` 报告**——所以这里可以带
+    `probed_at_utc` 与卷标识（`plan/02` §四 第 3 条只约束判定输入）。
+    """
+
     if not args.verify:
         raise OracleError(ReasonCode.USAGE_ERROR, "platforms 需要 --verify", {})
-    raise OracleError(
-        ReasonCode.PLATFORM_TABLE_MISSING,
-        "平台表尚未落地（M1 取表 / M3 接入）",
-        {"expected": "data/platforms/ntfs-upcase.bin + data/platforms/meta.json"},
-    )
+
+    tables = verify_platforms(args.dir)
+    report = tables.verify_report()
+    payload = {
+        "tool_version": __version__,
+        "schema_version": SCHEMA_VERSION,
+        "command": "platforms",
+        "subcommand": "verify",
+        "verified": True,
+        **report,
+    }
+    if args.format == "json":
+        _emit(payload, dumps_json(payload), args.out)
+        return int(ExitCode.OK)
+
+    lines = [
+        f"extract-oracle {__version__} (platforms --verify)",
+        "OK   platform tables verified",
+        f"  ntfs_upcase  entries={tables.ntfs.entries} source={tables.ntfs.source} "
+        f"sha256={tables.ntfs.table_id}…",
+        f"  volume       serial={tables.ntfs.volume.get('serial_hex', '-')} "
+        f"label={tables.ntfs.volume.get('label', '-')} "
+        f"fs={tables.ntfs.volume.get('ntfs_version', '-')}",
+        f"  macos        evidence_strength={tables.macos.get('evidence_strength', '-')} "
+        f"source={tables.macos.get('source', '-')}",
+        f"  linux        evidence_strength={tables.linux.get('evidence_strength', '-')} "
+        f"source={tables.linux.get('source', '-')}",
+    ]
+    _emit(payload, "\n".join(lines) + "\n", args.out)
+    return int(ExitCode.OK)
 
 
 COMMANDS = {

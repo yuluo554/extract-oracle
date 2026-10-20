@@ -141,8 +141,14 @@ def test_capabilities_reports_all_modules(capsys):
         assert module.name in out
 
 
-def test_platforms_verify_reports_missing_table():
-    assert main(["platforms", "--verify"]) == int(ExitCode.CAPABILITY_MISSING)
+def test_platforms_verify_reports_fingerprint():
+    """M3 起 `platforms --verify` 是真校验（表在位 → 0 + 表指纹）。
+
+    "表缺 → 3" 的反向分支在 `tests/test_fold.py`（用 `--dir` 指向空目录 / 篡改表）。
+    这里只钉住"占位退 3 已消失"与"输出里真有指纹"。
+    """
+
+    assert main(["platforms", "--verify"]) == int(ExitCode.OK)
 
 
 def test_platforms_without_verify_is_usage_error():

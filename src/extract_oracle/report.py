@@ -28,17 +28,18 @@ def dumps_json(payload: dict[str, Any]) -> str:
 
 
 def render_text(payload: dict[str, Any]) -> str:
-    """人读面。骨架期只渲染 `summary` 与 `findings`；字段集由 `plan/03` 固定。"""
+    """人读面。M3 起渲染 `summary` + `findings` + `collisions`；字段集由 `plan/03` 固定。"""
 
     lines: list[str] = []
     summary = payload.get("summary", {})
     lines.append(f"extract-oracle {payload.get('tool_version', '?')}")
     lines.append(f"schema {payload.get('schema_version', '?')}")
     lines.append(
-        "target={target} entries={entries} findings={findings}".format(
+        "target={target} entries={entries} findings={findings} collisions={collisions}".format(
             target=payload.get("target", "-"),
             entries=summary.get("entry_count", 0),
             findings=summary.get("finding_count", 0),
+            collisions=summary.get("collision_count", 0),
         )
     )
     findings = payload.get("findings", [])
@@ -46,6 +47,20 @@ def render_text(payload: dict[str, Any]) -> str:
         lines.append("")
         for item in findings:
             lines.append(f"- {item.get('ruleId', '?')}: {item.get('message', '')}")
+    collisions = payload.get("collisions", [])
+    if collisions:
+        lines.append("")
+        for item in collisions:
+            lines.append(
+                "- {code} [{platform}] {names} → survivor {survivor} ({verdict}, {strength})".format(
+                    code=item.get("code", "?"),
+                    platform=item.get("platform", "?"),
+                    names=" + ".join(item.get("names", [])),
+                    survivor=item.get("survivor", "?"),
+                    verdict=item.get("verdict", "?"),
+                    strength=item.get("evidenceStrength", "?"),
+                )
+            )
     return "\n".join(lines) + "\n"
 
 

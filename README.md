@@ -1,6 +1,6 @@
 # extract-oracle · 归档提取预言机
 
-> **Status: v0.1.0 — M2 双头差分（`structure.*` 六条可用，其余模块待 M3–M5）**｜方法论：`ai-tool-project-sprint`｜布局门：`py -3.12 tools/check_sprint_layout.py`
+> **Status: v0.1.0 — M3 跨平台折叠（`structure.*` 六条 + `collision.*` 四条可用，其余模块待 M4–M5）**｜方法论：`ai-tool-project-sprint`｜布局门：`py -3.12 tools/check_sprint_layout.py`
 
 **现有工具只做"单条规则检查"或"字段转储"，没有一个输出"谁会写出什么名字、谁覆盖谁、哪个工具会拒绝"。**
 
@@ -31,7 +31,7 @@
 | M0 | ✅ | 计划套件 + 方法论装订 + 可运行骨架 |
 | M1 | ✅ | fixture 补全（22/22）+ `$UpCase` 取表 + 四工具对照 |
 | M2 | ✅ | 三层解析 + MOD-1 双头差分与重叠（六条规则） + MOD-2 骨架 |
-| M3 | ⬜ | MOD-3 跨平台折叠（写序→存活者） |
+| M3 | ✅ | 平台表接入 + MOD-3 跨平台折叠（四条规则、写序→存活者） |
 | M4 | ⬜ | MOD-4 三级可访问性 |
 | M5 | ⬜ | MOD-5 容器与预算 + MOD-2 收尾 |
 | M6 | ⬜ | 发布（tag + Release 附产物） |
@@ -56,17 +56,35 @@ extract-oracle inspect some.zip
 # 能力状态：五个模块各自落地了没
 extract-oracle capabilities
 
-# 判定入口（M2 起逐步可用；判定层未就绪时退出码 3，绝不产出空 findings）
+# 判定入口（M3 起 `fold` 可用；判定层未就绪时退出码 3，绝不产出空 findings）
 extract-oracle check some.zip --target windows
 extract-oracle check some.zip --target windows,macos --format json
 
 # 只跑已落地的模块（报告里 modules 字段写明本次范围；点名未落地的模块照样退 3）
 extract-oracle check some.zip --target windows --module structure
+extract-oracle check some.zip --target windows,macos --module fold
 ```
 
 **M2 起可用的判定**：`structure.*` 六条（`NAME_DIVERGES` / `CRC_DIVERGES` / `SIZE_DIVERGES` /
 `FLAG_DIVERGES` / `LFH_OVERLAP` / `CD_COUNT_MISMATCH`），每条 finding 带 `precedent` 字段写清
 "哪个工具读哪个头"——**不引"规范要求 LFH/CD 一致"**（规范没有这句话，见 `data/README.md` §1.4）。
+
+**M3 起可用的判定**：`collision.*` 四条（`FILEDIR` / `CASEFOLD` / `NFC` / `TRIM`），输出在
+`collisions[]`（不是 `findings[]`）。Windows 侧大小写折叠走**真实 NTFS `$UpCase` 表**
+（`data/platforms/ntfs-upcase.bin`，`sha256` 逐字节对账），**不用 `str.lower()`/`casefold()` 近似**；
+每条冲突给出 `writeOrder` 与 `survivor`——**不只是"会冲突"，而是"最后剩谁"**：
+
+```bash
+# Readme.txt + README.TXT → survivor README.TXT（后写覆盖，内容 LOWER）
+extract-oracle check data/fixtures/case.zip --target windows --module fold
+
+# 表指纹 + 卷标识（表被换过则退出码 3，不静默使用）
+extract-oracle platforms --verify
+```
+
+macOS 侧**只报 NFC**（`evidence_strength: medium`，依据为 UAX #15 + TN1150 + 逆向文档观察）；
+**不报** `CASEFOLD`——大小写折叠与否是卷格式属性，而我们没有 macOS 折叠表，所以不猜（见
+`data/README.md` §4.3、`plan/05` §五 U15）。
 
 ## 退出码
 
@@ -82,11 +100,16 @@ extract-oracle check some.zip --target windows --module structure
 
 ## 已知限制（诚实清单）
 
-- **判定层只落地了 MOD-1**：`structure.*` 六条可用（M2）；`fold` / `accessibility` / `container`
-  与编码推断仍待 M3–M5。不带 `--module` 的 `check` 返回 3 是**设计语义**，不是故障。
+- **判定层已落地 MOD-1 与 MOD-3**：`structure.*` 六条 + `collision.*` 四条可用；
+  `accessibility` / `container` 与编码推断仍待 M4–M5。不带 `--module` 的 `check` 返回 3
+  是**设计语义**，不是故障。
+- **macOS 侧不报大小写折叠**：折叠与否是卷格式属性（libfsapfs 的观察只说"大小写不敏感卷"），
+  而我们没有 macOS 折叠表——用 `lower()` 近似会误判，所以只报 `NFC`。这是**收窄不是猜测**。
+- **Windows 折叠的强度标 `table_simulated` 而非 `measured`**：判据是"表 + 目标平台"，
+  不是"我们恰好在 Windows 上跑"——两条纪律不能混。
 - **`encoding` 只有骨架**：原始名字节、bit 11、extra fields（含 `0x7075` 的 CRC 校验）已能读出，
   但候选编码与 `predictedNames` 在 M5——所以 `capabilities` 里它仍显示 `pending`。
-- **macOS / Linux 落盘行为未实测**（本机只有 Windows）：这些判定输出标 `table_simulated`，不是 `measured`。
+- **macOS / Linux 落盘行为未实测**（本机只有 Windows）：这些判定输出标 `table_simulated` / `medium`，不是 `measured`。
 - **APFS 归一化依据为中硬**：来自逆向文档与实操观察，**非 Apple 官方规范**，输出标 `evidence_strength: medium`。
 - **不做**：解压、zip slip / zip bomb / 恶意检测、安全打分、"该用哪个工具"的建议、GUI/Web 界面。
 - **单文件可执行**在 M6 产出；PyInstaller 产物含构建期时间戳，**不承诺跨机构建逐字节一致**。
@@ -94,10 +117,10 @@ extract-oracle check some.zip --target windows --module structure
 ## 仓库结构
 
 ```
-src/extract_oracle/   解析（zip_reader）/ 判定（rules/）/ 报告（report）/ CLI
+src/extract_oracle/   解析（zip_reader）/ 判定（rules/）/ 平台表访问（platforms.py）/ 报告（report）/ CLI
 tools/                gen_fixtures.py（程序化 fixture）+ 布局门 + 脱敏门
 tests/                契约 / 确定性 / fixture 对账 / 判定验收 / 三工具行为 / 门自身变异
-data/                 依据台账（README.md）+ fixtures + truth + tool-matrix（四工具实测）
+data/                 依据台账（README.md）+ fixtures + truth + tool-matrix（四工具实测）+ platforms（$UpCase 表）
 docs/                 rules.md（规范原句，M4）/ divergence.md（四工具实测，M6）
 plan/                 00–06 计划套件 + HANDOFF + RELEASE
 scripts/              build.py（PyInstaller onefile）

@@ -192,8 +192,8 @@
 
 | 退出码 | 语义 | 判据 |
 |---|---|---|
-| `0` | 检查完成，**无** finding | 至少一个条目被检查且 findings 为空 |
-| `1` | 检查完成，**有** finding | findings 非空 |
+| `0` | 检查完成，**无** finding 且**无** collision | 至少一个条目被检查且 `findings` 与 `collisions` 都为空 |
+| `1` | 检查完成，**有** finding **或** 有 collision | 两者都是判定产出，任一非空即 `1`（`case.zip --target windows --module fold` 只产 collision，照样退 `1`） |
 | `2` | **输入无法解析**（不是 ZIP / EOCD 找不到 / CD 或 LFH 解析不了 / 文件读不了） | 不得退化为 `0`（"依赖/输入缺失不得静默变成合法空结果"） |
 | `3` | **口径/平台表缺失**（如 `$UpCase` 表未提供而目标含 windows）**或判定模块未落地**（含 `--module` 点名未落地模块、ZIP64 哨兵值读不到 ZIP64 EOCD） | 不得静默跳过该判定后返回 `0`；不得把"没点名"当成"没问题" |
 | `4` | 用法错误 | 参数非法 |
@@ -208,6 +208,11 @@
 > **`check --module` 的口径**：不给 `--module` = 要求五模块齐备（缺一个即 `3`）；
 > 给了 = 只对**明确点名的模块**负责，报告里 `modules` 字段写明本次范围。
 > 点名一个未落地的模块照样退 `3`——**收窄范围不等于豁免**。
+>
+> **M3 补充：`collisions` 也是判定产出**（MOD-3）。退码 `1` 的判据是
+> "`findings` **或** `collisions` 非空"——否则 `case.zip` 只产 collision 时会退 `0`，
+> 报告里有冲突却告诉 CI"没问题"（最坏的一种假绿，与 D10 同一条纪律）。
+> `summary` 里因此同时给 `finding_count` 与 `collision_count`。
 
 ### 4.2 三级可访问性（`accessibility`）
 
@@ -230,11 +235,33 @@
 | 目标 | 大小写折叠来源 | 归一化折叠 | 裁剪折叠 |
 |---|---|---|---|
 | `windows` | **真实 NTFS `$UpCase` 表**（卷读取或真机探测，记录卷标识与探测环境）；**禁止 `str.lower()`/`casefold()`** | **不做**（Windows 把名字当不透明 WCHAR 序列） | 尾随空格与尾随点被裁剪 |
-| `macos` | 大小写不敏感卷 → 先 lower-case（libfsapfs 观察，`evidence_strength: medium`） | **做**（NFD 归一化后比较；APFS 归一化不敏感） | 不做 |
+| `macos` | **不做**（见下"macOS 侧为什么不报 CASEFOLD"） | **做**（NFD 归一化后比较；APFS 归一化不敏感） | 不做 |
 | `linux` | 不做折叠 | 不做 | 不做 |
 
 - `collision.CASEFOLD` / `collision.NFC` / `collision.TRIM` / `collision.FILEDIR` 的**判定顺序固定**为 FILEDIR → CASEFOLD → NFC → TRIM（同一对名字可命中多条，全部输出）。
 - `survivor` = 按 CD 顺序**最后写入**者；`verdict` ∈ {`overwritten`, `renamed`, `skipped`}。
+
+**M3 落地时固定的四条判据**（落地形态见 `plan/03` §MOD-3 的 M3 落地记）：
+
+1. **CASEFOLD 与 TRIM 是一个划分，不是两次计数**：Windows 侧"是不是同一个文件"= 先裁尾随空格/点、
+   再做大小写无关比较，所以比较键取 `fold(trim(name))`；但**裁剪后逐字节相同**的对子归 `TRIM`，
+   `CASEFOLD` 跳过它。两者并集覆盖、交集为空（`trim.zip` 只报 TRIM，`case.zip` 只报 CASEFOLD）。
+2. **FILEDIR 走平台的"路径等价形"**：`windows` = `fold(trim(path))`、`macos` = NFD、`linux` = 逐字节。
+   因此 `a` + `A` + `a/b` 在 Windows 上会同时给出 `CASEFOLD(a,A)` 与**两条** `FILEDIR`
+   （跨规则不短路、同规则逐对穷举）。
+3. **FILEDIR 的存活者是先写者**（`verdict: skipped`），其余三条是后写者（`overwritten`）——
+   文件与目录不可能"互相覆盖"：后写者根本没落盘。
+4. **`onDiskNames` 是落盘形、`names` 是归档名**：Windows 上落盘形 = 裁剪后（NTFS 保留大小写），
+   macOS 上是 NFD 形；`names` 一律保留归档里的原名（`case.zip` 落盘只有 `README.TXT`，
+   内容是后写者的 `LOWER`，但报告里两个名字都要能看见）。
+
+**macOS 侧为什么不报 `CASEFOLD`**（这是对 `plan/03` 原表述的一处收窄，理由如下）：
+libfsapfs 的实现观察是"**大小写不敏感卷**先 lower-case"——即大小写是否折叠取决于**卷格式**，
+而 `data/platforms/meta.json` 里**没有** macOS 的折叠表；用 Python `lower()` 近似会违反决策 ③
+（`ǅ/Ǆ` 上 `casefold` 判冲突而 NTFS 不冲突——同样的近似风险在 APFS 上无法排除）。
+所以这里**不猜**：macOS 侧只报由 UAX #15 + TN1150 支持、且实现观察一致的 `collision.NFC`
+（`evidence_strength: medium`）。绑定位置：`rules/fold.py::casefold_pairs`（`platform != "windows"` 即返回空）
+与 `case.zip` 的真值 `macos: []`；真机 macOS 折叠表可取时按 §4 流程放开（`plan/05` §五 U2/U3）。
 
 ### 4.4 编码候选与可信度
 
@@ -287,6 +314,53 @@
 | 数值格式 | 整数；不出现浮点；不定点舍入 | 避免跨语言格式化差异 |
 | 原子写 | 写临时文件 + `os.replace` | 中断不留半个产物 |
 
+### 4.9 `collisions` 输出形状（MOD-3 的唯一表述）
+
+> 与 `findings` 并列的第二个判定数组。字段集**新增即改本节**（同提交改 `findings.Collision.to_dict()`
+> 与 `tests/test_fold.py`），"新增键"与"漏写键"是两件事。
+
+| 字段 | 类型 | 口径 |
+|---|---|---|
+| `code` | string | `collision.FILEDIR` / `CASEFOLD` / `NFC` / `TRIM`（四值封闭） |
+| `platform` | string | `windows` / `macos` / `linux` |
+| `names` | string[] | **归档里的名字**（原名，含 NFD/NFC 原样），顺序 = CD 顺序 |
+| `onDiskNames` | string[] | 该平台上的**落盘形**（Windows：裁剪后；macOS：NFD 形） |
+| `writeOrder` | int[] | 写序 = `entry_index`（CD 顺序），与 `names` 同长同序 |
+| `cdOffsets` | int[] | 各条目的 CD 偏移，与 `names` 同长同序（也是排序键的来源） |
+| `survivor` | string | 存活者（`names` 里的一个）；`FILEDIR` 取**先写者**，其余取**后写者** |
+| `survivorEntryIndex` | int | 存活者的 `entry_index` |
+| `verdict` | string | 非存活者的遭遇：`overwritten` / `renamed` / `skipped`（`skipped` = 根本没落盘） |
+| `evidenceStrength` | string | §4.7 的四枚举之一；**按 (`platform`, `code`) 固定**，不看本机是什么系统 |
+| `evidence` | object | 每条规则的机读依据（含 `source`）：`ntfs_upcase_table` / `structural_self_evidence` / `TN1150 + UAX #15 + libfsapfs` / `MS Learn naming conventions` |
+
+四个数组**同长同序**是硬约束（测试钉住）：它们描述的是同一个"两条目 → 一个落盘名"的事件，
+不允许某个数组按别的顺序排（否则报告里的对应关系要读者自己猜）。
+
+**`(platform, code)` → `evidenceStrength` 的固定映射**（`rules/fold.py::EVIDENCE`）：
+
+| `code` | windows | macos | linux |
+|---|---|---|---|
+| `collision.FILEDIR` | `measured` | `measured` | `measured` |
+| `collision.CASEFOLD` | `table_simulated` | —（不报） | —（不报） |
+| `collision.NFC` | —（不报） | `medium` | —（不报） |
+| `collision.TRIM` | `measured` | —（不报） | —（不报） |
+
+**为什么不按"本机是什么系统"给强度**：那会让同一份输入在 Windows 与 Linux 上给出不同的
+`evidenceStrength`，直接违反"同输入 + 同平台表 → 同一输出"（`plan/02` §六）。
+Windows 侧一律 `table_simulated` 而不是 `measured`——判据是**表 + 目标平台**，
+不是"我们恰好在 Windows 上跑"（R6：不得把表模拟写成实测）。
+
+### 4.10 `check` 报告的 `platforms` 块
+
+判定报告里带一个 `platforms` 块（表身份，跨机可比），**刻意不含两项**：
+
+| 含 | 不含 | 为什么不含 |
+|---|---|---|
+| `ntfs_upcase.{entries, sha256, source}`、两张副表的 `evidence_strength` + `source` | `probed_at_utc`（探测时点）、`volume`（卷序列号/卷标） | `plan/02` §四 第 3 条：探测时点是**环境事实**不是判定输入；卷标识是本机指纹。带上它们 → 跨机复跑的报告必红 |
+
+`volume` 与 `probed_at_utc` 只出现在 `platforms --verify` 的诊断输出里（那是一次性查表可信度检查，
+不进任何 `check` 报告）。表身份用 `sha256` 表达——**这是"表换过没有"的跨机判据**。
+
 
 ---
 
@@ -298,6 +372,8 @@
 | `CON.txt` 应用层不可见 | **硬** | 本机实测三观测（Test-Path / Get-Content / open） | 三级分级的直接来源 |
 | NTFS 折叠 ≠ casefold | **硬** | 8 组字符对实测 | 近似法的假阳性由此证明 |
 | 后写覆盖（`Readme.txt` + `README.TXT`） | **硬** | 三工具实测，最终内容均为 `LOWER` | `survivor` 预测的依据 |
+| 折叠四规则的**判定顺序与分工** | **硬** | `case.zip`/`norm.zip`/`trim.zip`/`filedir.zip` 四份真值 + `tests/test_fold.py` | CASEFOLD/TRIM 构成划分、FILEDIR 走平台等价形（§4.3） |
+| macOS 侧**不报** `CASEFOLD` | **中硬（诚实边界）** | 无 macOS 折叠表；`lower()` 近似违反决策 ③ | 收窄而非猜测；真机表可取时按 §4 流程放开（`plan/05` §五 U2/U3） |
 | 编码分歧（GBK / 0x7075） | **硬** | 三工具实测行为 + APPNOTE 镜像 | 预测规则可回归 |
 | ZIP 双头不一致的**实现选择** | **硬** | libarchive#2695 作者原话 + 三工具实测 | 不引规范条文 |
 | Windows 命名规则 | **硬** | MS Learn 原句 | 逐条进 `docs/rules.md` |

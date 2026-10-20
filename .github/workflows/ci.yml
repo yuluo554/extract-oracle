@@ -105,3 +105,44 @@ jobs:
           fi
           if [ "$fail" -ne 0 ]; then exit 1; fi
           echo "structure smoke OK"
+      - name: Fold findings smoke
+        # MOD-3 的交付态冒烟：四份折叠样本在**指定平台**上各命中一条（退出码 1）；
+        # 反向两条：`case.zip` 在 macos/linux 上必须零冲突（退 0）。
+        # 退出码是口径（`data/README.md` §4.1），所以这里显式断言它，不用 `|| true` 吞掉。
+        shell: bash
+        run: |
+          set -uo pipefail
+          fail=0
+          for triple in \
+            "case.zip windows collision.CASEFOLD" \
+            "norm.zip macos collision.NFC" \
+            "trim.zip windows collision.TRIM" \
+            "filedir.zip windows collision.FILEDIR"
+          do
+            set -- $triple
+            fixture=$1
+            target=$2
+            code=$3
+            out=$(extract-oracle check "data/fixtures/$fixture" --target "$target" --module fold)
+            rc=$?
+            if [ "$rc" -ne 1 ]; then
+              echo "FAIL $fixture/$target: 期望退出码 1，实得 $rc"; fail=1
+            fi
+            echo "$out" | grep -q "\"$code\"" || { echo "FAIL $fixture/$target: 缺 $code"; fail=1; }
+          done
+          # 反向：`case.zip` 在 macos/linux 上无 CASEFOLD（macOS 不近似、Linux 不折叠）
+          for target in macos linux; do
+            extract-oracle check data/fixtures/case.zip --target "$target" --module fold > /dev/null
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+              echo "FAIL case.zip/$target: 期望退出码 0（无冲突），实得 $rc"; fail=1
+            fi
+          done
+          # 平台表接入的自证：真校验必须过（表被换过 → 非 0）
+          extract-oracle platforms --verify > /dev/null
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "FAIL platforms --verify: 期望 0，实得 $rc"; fail=1
+          fi
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+          echo "fold smoke OK"
