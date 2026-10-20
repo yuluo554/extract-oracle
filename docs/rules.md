@@ -1,7 +1,8 @@
-# rules · 规则原句台账（骨架；M4 定稿）
+# rules · 规则原句台账（M4 定稿）
 
 > **本文件回答一个问题：每条判定到底引的是谁的原话？**
-> 纪律：**没有原句就不写确定语气**。原句已核对 → 直引；只有要点转述 → 标 `⬜ 原句待回填`，M4 补齐。
+> 纪律：**没有原句就不写确定语气**。原句已核对 → 直引；只有要点转述 → 标 `⬜ 原句待回填`。
+> **M4 已把 M1 留下的 5 行全部回填**（见 §五 的收口记录）；现在本文件**没有** `⬜ 原句待回填` 行。
 > 数值口径不写在这里（唯一真相源是 `data/README.md` §4）；这里只管**依据与出处**。
 >
 > 列口径：`ruleId` = 输出里的规则标识（`plan/03`）；`原句` = 可逐字回到来源的引文（节选）；
@@ -9,19 +10,20 @@
 >
 > **逐条对应 `data/README.md` §1.4 的原表**（该表 12 行，`plan/HANDOFF-M1.md` §3 记作「11 条」——
 > 差异在于本文件把「APPNOTE 未要求 LFH/CD 一致」单列一行、而把 ODF 尾随换行并入 ODF 行。
-> 这里按 §1.4 逐行落地，**宁可多一行，不漏一条**）。
+> 这里按 §1.4 逐行落地，**宁可多一行，不漏一条**）。M4 另加一行（#15 POSIX `Filename` 定义），
+> 因为原表把"/ 不可出现在文件名"挂在 `pathname(7)` 上——**实测那句不在那篇 man page 里**（见 §五）。
 
 ## 一、总表
 
 | # | `ruleId` | 依据 | URL | 原句（节选） | 强度 | 状态 |
 |---|---|---|---|---|---|---|
-| 1 | `structure.*`（自证边界）、`budget.*` | MS Learn · 文件命名约定 | `https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file` | "the file system treats path and file names as an **opaque sequence of WCHARs**" | 硬 | ✅ 原句已核对 |
-| 2 | `collision.NFC`（macOS 侧） | UAX #15 · Unicode Normalization Forms | `https://www.unicode.org/reports/tr15/` | 定义 NFD/NFC 的规范分解与组合；**UAX #15 本身不谈文件系统**，FS 侧必须另引 TN1150 与实现观察 | 硬 | ⬜ 原句待回填（M4） |
+| 1 | `structure.*`（自证边界）、`accessibility.*`（Windows 侧）、`budget.*`（Windows 侧） | MS Learn · 文件命名约定 | `https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file` | "the file system treats path and file names as an **opaque sequence of WCHARs**"；"The following reserved characters: \< \> : \" / \\ \| ? \*"；"Integer value zero, sometimes referred to as the ASCII *NUL* character."；"Do not use the following reserved names for the name of a file: CON, PRN, AUX, NUL, COM1…COM9, LPT1…LPT9… Also avoid these names followed immediately by an extension; for example, **NUL.txt** and NUL.tar.gz are both equivalent to NUL."；"Do not end a file or directory name with a space or a period."；"the maximum length for a path is **MAX_PATH**, which is defined as 260 characters" | 硬 | ✅ 原句已核对（M4 补留名/尾随/260 三句） |
+| 2 | `collision.NFC`（macOS 侧） | UAX #15 · Unicode Normalization Forms | `https://www.unicode.org/reports/tr15/` | 表 1："Normalization Form D (NFD) — Canonical Decomposition"；"Normalization Form C (NFC) — Canonical Decomposition, followed by Canonical Composition"；§1.1："Canonical equivalence is a fundamental equivalency between characters or sequences of characters which represent the same abstract character"。**UAX #15 全文零命中 "file system" / "filename"**——FS 侧必须另引 TN1150 与实现观察 | 硬 | ✅ 原句已回填（M4） |
 | 3 | `collision.NFC`（macOS 侧） | TN1150 · HFS Plus Volume Format | `https://developer.apple.com/library/archive/technotes/tn/tn1150.html` | "HFS Plus stores strings fully decomposed and in canonical order" | 硬 | ✅ 原句已核对 |
-| 4 | `collision.NFC`（macOS 侧）、`collision.CASEFOLD`（macOS 侧） | libfsapfs（逆向文档，**非 Apple 官方规范**） | `https://github.com/libyal/libfsapfs/blob/main/documentation/Apple%20File%20System%20(APFS).asciidoc` | 卷不兼容标志 `0x08 APFS_INCOMPAT_NORMALIZATION_INSENSITIVE`；name hash 用 NFD；大小写不敏感卷先 lower-case | 中硬 | ⬜ 原句待回填（M4）；**引用时必须写明"实现观察，非 Apple 官方规范"** |
-| 5 | `accessibility`（Linux 侧）、`budget`（Linux 侧） | Linux `pathname(7)` | `https://man7.org/linux/man-pages/man7/pathname_resolution.7.html` | `/` 不可出现在文件名；`PATH_MAX` 为**字节**口径；`NAME_MAX` 由 fstype 决定 | 硬 | ⬜ 原句待回填（M4） |
-| 6 | `encoding.*`（候选顺序与解码） | APPNOTE 6.3.10 D.1 / D.2（**镜像来源** `bearcove/rc-zip` `static/appnote.txt`） | `https://github.com/bearcove/rc-zip/blob/main/static/appnote.txt` | bit 11 set → **MUST** 为 UTF-8；unset → 历史 CP437 | 中硬（来源替代） | ⬜ 原句待回填（M4）；引用须写明**镜像来源与版本 v6.3.10** |
-| 7 | `encoding.UPATH_CRC_MISMATCH`、`upath` 字段 | APPNOTE 6.3.10 D.6（同上镜像） | 同上 | Info-ZIP 0x7075（Unicode Path）/ 0x6375（Unicode Comment）的字段结构：`version(1) / name_crc32(4) / utf8_name` | 中硬（来源替代） | ⬜ 原句待回填（M4） |
+| 4 | `collision.NFC`（macOS 侧） | libfsapfs（逆向文档） | `https://github.com/libyal/libfsapfs/blob/main/documentation/Apple%20File%20System%20(APFS).asciidoc` | 卷不兼容标志表："`0x0000000000000008` \| `APFS_INCOMPAT_NORMALIZATION_INSENSITIVE` \| Filenames are normalization insensitive"；name hash 一节："If the file system is case-insensitive represent the name in **lower-case**"、"Represent the name as an Unicode string in **Normalization Form Canonical Decomposition (NFD)**"。**这是实现观察，非 Apple 官方规范**（`developer.apple.com` 与 APFS Reference PDF 均 ECONNRESET，未取到官方原文） | 中硬 | ✅ 原句已回填（M4）；**引用时必须写明"实现观察，非 Apple 官方规范"** |
+| 5 | `accessibility.*`（Linux 侧）、`budget.*`（Linux 侧） | Linux `pathname_resolution(7)` | `https://man7.org/linux/man-pages/man7/path_resolution.7.html` | "There is a maximum length for pathnames.  If the pathname (or some intermediate pathname obtained while resolving symbolic links) is too long, an `ENAMETOOLONG` error is returned ("Filename too long")." | 硬 | ✅ 原句已回填（M4）；**本篇不谈 `/` 与 `NAME_MAX`**，那两条改引 #15（见 §五 更正①） |
+| 6 | `encoding.*`（候选顺序与解码） | APPNOTE 6.3.10 D.1 / D.2（**镜像来源** `bearcove/rc-zip` `static/appnote.txt`，版本串 "Version: 6.3.10  Status: FINAL - replaces version 6.3.9"） | `https://github.com/bearcove/rc-zip/blob/main/static/appnote.txt` | D.1："The ZIP format has historically supported only the original IBM PC character encoding set, commonly referred to as **IBM Code Page 437**."；D.2："If general purpose bit 11 is unset, the file name and comment **SHOULD** conform to the original ZIP character encoding.  If general purpose bit 11 is set, the filename and comment **MUST** support The Unicode Standard, Version 4.1.0 or greater using the character encoding form defined by the **UTF-8** storage specification." | 中硬（来源替代） | ✅ 原句已回填（M4）；引用须写明**镜像来源与版本 v6.3.10** |
+| 7 | `encoding.UPATH_CRC_MISMATCH`、`upath` 字段 | APPNOTE 6.3.10 §4.6.9 / D.6–D.7（同上镜像） | 同上 | §4.6.9 字段表："(UPath) 0x7075 \| Short \| tag for this extra block type ("up")"、"Version 1 byte version of this extra field, currently 1"、"NameCRC32 4 bytes File Name Field CRC32 Checksum"、"UnicodeName Variable UTF-8 version of the entry File Name"；D.7："records are identified by Header ID's **0x6375** (Info-ZIP Unicode Comment Extra Field) and **0x7075** (Info-ZIP Unicode Path Extra Field)" | 中硬（来源替代） | ✅ 原句已回填（M4） |
 | 8 | `structure.NAME_DIVERGES` 的**依据边界** | APPNOTE 6.3.10（逐字检索「must be identical」/「SHOULD match」**均无命中**） | 同上镜像 | **规范没有要求 LFH 与 CD 的名字一致** | — | ✅ 反向核对已做；此条是**禁令**：不得写成"规范要求一致" |
 | 9 | `structure.NAME_DIVERGES` 的**实现选择** | libarchive issue #2695（作者 kientzle 本人） | `https://github.com/libarchive/libarchive/issues/2695` | "The seeking reader reads **BOTH** the central directory and the local file header… in case of a mismatch… it **always prefers the data in the local file header**" | 硬 | ✅ 原句已核对 |
 | 10 | 同上（其他三个工具取 CD） | 同上 issue，fdegros（2026-09-24） | 同上 | "Info-ZIP's `unzip`, libzip, and Python's stdlib `zipfile` all read the Central Directory's filename. libarchive is the one that diverges here…" | 硬 | ✅ 原句已核对 |
@@ -29,29 +31,47 @@
 | 12 | `container.UTF8_REQUIRED` | EPUB 3.3 §4.3.2 · OCF ZIP Container | `https://www.w3.org/TR/epub-33/#sec-zip-container-mime` | "OCF ZIP containers MUST encode file system names using **UTF-8**" | 硬 | ✅ 原句已核对 |
 | 13 | `container.*`（ODF 上下文） | ODF 1.2 part 3 §3.3 · Packages | `https://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part3.html` | "shall be the first file"；"shall not be compressed… shall not use an 'extra field'" | 硬 | ✅ 原句已核对 |
 | 14 | `container.MIMETYPE_PADDING`（ODF 上下文，带 `inferred: true`） | 从 media-type 相等约束推出 | 同上 | **ODF 原文未明文禁止尾随换行** | 推断 | ✅ 已标注 `inferred`；**不得**写成 ODF 明文要求 |
+| 15 | `accessibility.BLOCKED`（Linux 侧的 `/` 与空名）、`budget.*`（`NAME_MAX`/`PATH_MAX` 的**字节**口径） | POSIX · Base Definitions §3.170 `Filename` / `{NAME_MAX}` / `{PATH_MAX}` | `https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html` | §3.170："A sequence of bytes consisting of 1 to {NAME_MAX} bytes used to name a file.  The bytes composing the name **shall not contain the \<NUL\> or \<slash\> characters**."；`{NAME_MAX}`："Maximum number of **bytes** in a filename (not including the terminating null of a filename string)."；`{PATH_MAX}`："Maximum number of bytes the implementation will store as a pathname in a user-supplied buffer of unspecified size, including the terminating null character." | 硬 | ✅ 原句已回填（M4）；**M4 新增行**——原表把这条挂在 `pathname(7)` 上，实测那篇没有（§五 更正①） |
 
 > 强度纪律（`data/README.md` §5）：任何 `中硬`/`推断` 项，输出必须带对应标记
 > （`evidence_strength: medium` / `inferred: true`），且文档不得用确定语气。
 
 ## 二、`ruleId` → 依据 反查表（M4 补齐到逐规则粒度）
 
+> **一行一个规则、一个 `#` 行号**（M1 留下的 6 行"集合引用"已全部拆开）。
+> 集合写法的坏处是实测过的：`accessibility.*` 写着"1, 5"时，读者以为 #5 支持"/ 不可出现在文件名"，
+> 而那篇 man page 里根本没有这句（§五 更正①）。
+
 | `ruleId` | 主依据（上表 #） | 备注 |
 |---|---|---|
-| `structure.NAME_DIVERGES` | 9, 10（+ 8 的禁区） | 只引实现选择；**不得**引"规范要求一致" |
-| `structure.CRC_DIVERGES` | 8（结构自证）+ APPNOTE 字段定义 | bit 3（data descriptor）置位且 LFH 为 0 时豁免 |
-| `structure.SIZE_DIVERGES` | 同上 | 同上 |
-| `structure.FLAG_DIVERGES` | 同上 | 全 16 位比较 |
-| `structure.LFH_OVERLAP` | 结构自证 | 物理区间相交，不需要外部依据 |
-| `structure.CD_COUNT_MISMATCH` | APPNOTE EOCD 字段定义 | ZIP64 路径单独处理 |
-| `encoding.*` | 6, 7 | 候选顺序见 `data/README.md` §4.4 |
-| `encoding.UPATH_CRC_MISMATCH` | 7 | 校验失配 → 降级 `low` |
-| `collision.CASEFOLD` | 4（macOS）+ 本机 `$UpCase` 实测（Windows） | Windows 侧依据是**数据表**，不是规范条文 |
-| `collision.NFC` | 2, 3, 4 | macOS 必报、Windows/Linux 不报 |
-| `collision.TRIM` | 1 | 仅 Windows |
-| `collision.FILEDIR` | 结构自证 | 三平台都报（M1 实测，见下 §三） |
-| `accessibility.*` | 1, 5 | 三级定义在 `data/README.md` §4.2 |
-| `container.*` | 11, 12, 13 | ODF 尾随换行标 `inferred` |
-| `budget.*` | 1, 5 | 数值见 `data/README.md` §4.6 |
+| `structure.NAME_DIVERGES` | 9,10（+ 8 的禁区） | 只引实现选择；**不得**引"规范要求一致" |
+| `structure.CRC_DIVERGES` | 8,6 | 结构自证（LFH/CD 各自声明的 CRC 不等）+ APPNOTE 的 CRC-32 字段定义；bit 3 置位且 LFH 为 0 时豁免 |
+| `structure.SIZE_DIVERGES` | 8,6 | 同上（uncompressed size 字段） |
+| `structure.FLAG_DIVERGES` | 8,6 | 结构自证 + APPNOTE 4.4.4 的 general purpose bit flag 字段；全 16 位比较 |
+| `structure.LFH_OVERLAP` | 8 | 纯结构自证：物理区间相交，不需要外部依据 |
+| `structure.CD_COUNT_MISMATCH` | 8,6 | EOCD 的 "total number of entries" 字段 vs 实际按签名遍历；ZIP64 路径单独处理 |
+| `encoding.candidates[]`（顺序与解码） | 6 | 候选顺序见 `data/README.md` §4.4；D.1 的 CP437 是候选之一 |
+| `encoding.bit11`（`high` 置信度的来源） | 6 | D.2 的 **MUST**（bit 11 set → UTF-8） |
+| `encoding.UPATH_CRC_MISMATCH` | 7 | §4.6.9 的 `NameCRC32`；校验失配 → 降级 `low` |
+| `encoding.upath`（0x7075 覆盖生效） | 7 | 同一条字段定义；`version=1` + `UnicodeName` UTF-8 |
+| `collision.CASEFOLD`（Windows 侧） | —（**本机 `$UpCase` 表**，不是规范条文） | 依据是数据表 `data/platforms/ntfs-upcase.bin` + 8 组真机碰撞实测（`data/README.md` §1.3.3）；**不引任何规范** |
+| `collision.NFC`（macOS 侧） | 2,3,4 | UAX #15 定形、TN1150 定 HFS+ 存储形、libfsapfs 定 APFS（**实现观察，非 Apple 官方规范**） |
+| `collision.TRIM` | 1 | MS Learn "Do not end a file or directory name with a space or a period."；仅 Windows |
+| `collision.FILEDIR` | 8 | 结构自证（同一路径既是文件又要求作目录）+ M1 四工具实测（§三），三平台都报 |
+| `accessibility.BLOCKED`（空名/NUL/空组件/`.`/`..`） | 15,1 | POSIX §3.170（Linux 侧 NUL/slash 与 `1 to {NAME_MAX} bytes`）+ MS Learn（Windows 侧 NUL 与 260） |
+| `accessibility.BLOCKED`（Windows 非法字符） | 1 | MS Learn 的 "The following reserved characters" 清单 |
+| `accessibility.BLOCKED`（Windows 组件超长） | 1 | MS Learn `MAX_PATH=260` + M1 实测（单组件 256 码元 `ERROR_INVALID_NAME`） |
+| `accessibility.WRITTEN_UNREADABLE` | 1 + **本机实测三证据** | MS Learn 保留名清单；"不可读"这一层靠 `data/README.md` §1.3.2 的三条实测（`Test-Path` False / `Get-Content` error / `open()` readable）——**规范只说不该用，没说不读不到** |
+| `accessibility.WRITTEN_TRUNCATED` | 1 | MS Learn 尾随空格/点 + 本机实测的 ADS 冒号截断（§三） |
+| `accessibility.OK` | — | 无三情形；不是"合规认证"，只表示本工具不预言任何异常 |
+| `container.MIMETYPE_NOT_FIRST` | 11,13 | EPUB "first file"；ODF "shall be the first file" |
+| `container.MIMETYPE_COMPRESSED` | 11,13 | EPUB "MUST NOT compress or encrypt"；ODF "shall not be compressed" |
+| `container.MIMETYPE_EXTRA` | 11,13 | EPUB "MUST NOT include an extra field"；ODF "shall not use an 'extra field'" |
+| `container.MIMETYPE_PADDING`（EPUB） | 11 | "MUST NOT contain any leading or trailing padding or whitespace" |
+| `container.MIMETYPE_PADDING`（ODF） | 14 | **原文未禁止** → `inferred: true` |
+| `container.UTF8_REQUIRED` | 12 | "OCF ZIP containers MUST encode file system names using UTF-8" |
+| `budget.PATH_OVER_260` | 1 | MS Learn `MAX_PATH=260`；本机 `LongPathsEnabled=1` 时**创建仍成功** → 只作可移植性告警（`plan/05` §五 U12） |
+| `budget.COMPONENT_OVER_255` | 1,15 | Windows 侧按 UTF-16 码元；Linux 侧按 POSIX `{NAME_MAX}` 的**字节**口径 |
 
 ## 三、M1 实测对既有表述的修正（必须先看这里再动 M2/M3/M4）
 
@@ -63,7 +83,7 @@ M1 的本机实测（`plan/05` §五 U11）推翻了 `data/README.md` 与 `plan/
 | `:` 属 Windows 非法字符 → `BLOCKED` | `CreateFileW('colon:name.txt')` **成功**，NTFS 按 ADS 语义只存 `colon` | `trailing.zip` 的 `colon:name.txt` 改判 `WRITTEN_TRUNCATED`（名字变了），**不是** `BLOCKED` |
 | 保留名「含扩展名形式」即不可读 | 只按**最后一个点之前**整体匹配：`AUX.txt`/`AUX.tar` 不可读，`aux.tar.gz` **真可读**（`Test-Path`=True） | `reserved.zip` 的 `aux.tar.gz` 改判 `OK` |
 | 组件超长 → 截断（`WRITTEN_TRUNCATED`） | 单组件 256 码元 `CreateFileW` **直接失败**（`ERROR_INVALID_NAME` 123），加 `\\?\` 前缀也一样 | `long_comp.zip` 改判 `BLOCKED`；`budget.COMPONENT_OVER_255` 仍是告警，但可访问性级别不是截断 |
-| （新增）`İ/i` 折叠 | **不冲突**（`ı/I`、`ſ/S`、`ß/SS`、`ß/ss`、`ǅ/Ǆ` 同样不冲突；`ω/Ω`、`é/É` 冲突） | 见 §四；`data/README.md` §1.3.3 的 `İ/i` 一行标 ⬜ 待复核 |
+| （新增）`İ/i` 折叠 | **不冲突**（`ı/I`、`ſ/S`、`ß/SS`、`ß/ss`、`ǅ/Ǆ` 同样不冲突；`ω/Ω`、`é/É` 冲突） | 见 §四；`data/README.md` §1.3.3 的 `İ/i` 一行在 M1 已按实测改正为"**不冲突**"（M4 复核：真表仍是 8/8 与 §四 一致） |
 
 ## 四、8 组字符对：本机复核结果（M1，2026-10-21）
 
@@ -76,10 +96,10 @@ M1 的本机实测（`plan/05` §五 U11）推翻了 `data/README.md` 与 `plan/
 | `ſ` / `S` | 冲突 | 不冲突 | **不冲突** | 不冲突 ✓ |
 | `ß` / `SS` | 冲突（`ß`.upper() = `SS`） | 不冲突 | **不冲突** | 不冲突 ✓ |
 | `ß` / `ss` | 冲突（`ß`.upper() = `SS` ≠ `ss`，但 `ß`.lower() 同形） | 冲突 | **不冲突** | 不冲突 ✓ |
-| `İ` / `i` | 不冲突（`İ`.upper() = `İ`） | 不冲突（`İ`.casefold() = `i̇`） | **不冲突** | **冲突 ✗（原表待复核）** |
+| `İ` / `i` | 不冲突（`İ`.upper() = `İ`） | 不冲突（`İ`.casefold() = `i̇`） | **不冲突** | 冲突 ✗（M0 记错；M1 已改正，M4 复核真表仍不冲突） |
 | `ǅ` / `Ǆ` | 冲突 | 冲突 | **不冲突** | 不冲突 ✓ |
 | `ω` / `Ω` | 冲突 | 冲突 | **冲突** | 冲突 ✓ |
-| `é` / `É`（对照组） | 冲突 | 冲突 | **冲突** | 不冲突 ✗（原表对照组的取值待复核） |
+| `é` / `É`（对照组） | 冲突 | 冲突 | **冲突** | 不冲突 ✗（M0 对照组的取值不成立；M1 已改正，M4 复核真表仍冲突） |
 
 **结论不变、且更强**：`str.lower()`/`str.casefold()` 与真实 NTFS 折叠**不等价** ——
 `ǅ/Ǆ` 上 `casefold` 判冲突而 NTFS 不冲突；`İ/i` 上两边都判不冲突而原表记的是冲突。
@@ -89,12 +109,30 @@ M1 的本机实测（`plan/05` §五 U11）推翻了 `data/README.md` 与 `plan/
 > 逐字符的完整表（65536 项）与那 8 组的机器可读结果在 `data/platforms/meta.json` 的
 > `ntfs_upcase.verification.pairs` 里；本表只是人读摘要。
 
-## 五、待办（M4 收口清单）
+## 五、M4 收口记录：5 行原句回填 + 两处依据出处更正（2026-10-21）
 
-- [ ] #2 / #4 / #5 / #6 / #7 五行的原句回填（当前只有要点转述 → 不得在 M2–M5 的输出里当"直引"用）
-- [ ] `ruleId` → 依据 反查表补齐到**每条规则一个 `#` 行号**（现在有 6 条是"集合引用"）
-- [ ] `İ/i` 与 `é/É` 两行与 `data/README.md` §1.3.3 的差异裁决（要么改 §1.3.3，要么给出复核条件）
-- [ ] APFS 行必须在正文里重复写"实现观察，非 Apple 官方规范"（`plan/00` 决策 ④）
+M1 留下的五条 `⬜ 原句待回填`（#2 / #4 / #5 / #6 / #7）已在 §一 全部回填。回填时**逐条重取原文**，
+其中两处发现原表把依据挂错了出处——这两处不是"补字"，是**改依据**，所以单独记：
+
+| 更正 | 原表述 | 实测/原文 | 影响 |
+|---|---|---|---|
+| ① `/` 与 `NAME_MAX` 的依据出处 | 挂在 Linux `pathname(7)`（`man7.org/.../pathname_resolution.7.html`）上 | 该篇**逐字检索零命中**：没有 `/`、没有 `NAME_MAX`、没有 `PATH_MAX`（只有一句 "There is a maximum length for pathnames." + `ENAMETOOLONG`）。真正的原句在 **POSIX Base Definitions §3.170 `Filename`**："The bytes composing the name shall not contain the `<NUL>` or `<slash>` characters."；`{NAME_MAX}` / `{PATH_MAX}` 同在那一章，且都是**字节**口径 | 新增 #15 承载这条；#5 只保留 `ENAMETOOLONG` 那一句。`accessibility.BLOCKED` 的 Linux 侧依据改引 #15 |
+| ② APPNOTE 镜像的版本串 | "APPNOTE 6.3.10" 只说版本号 | 镜像正文首行可核对："Version: 6.3.10" / "Status: FINAL - replaces version 6.3.9" / "Revised: Nov 01, 2022" | #6 / #7 / #8 的 URL 列都写明镜像与版本串，读者可直接对版 |
+
+**为什么 #4 不升级强度**：libfsapfs 的原文确实逐字拿到了（"`APFS_INCOMPAT_NORMALIZATION_INSENSITIVE` \| Filenames are normalization insensitive"、
+"If the file system is case-insensitive represent the name in lower-case"、"Represent the name as an Unicode string in
+Normalization Form Canonical Decomposition (NFD)"），但**它仍是逆向文档**：`developer.apple.com` 与 APFS Reference PDF
+本轮再试仍 ECONNRESET。所以强度保持 `中硬`，输出保持 `evidence_strength: medium`，正文继续保持
+**"实现观察，非 Apple 官方规范"** 的逐字标注（决策 ④）。**拿到原句不等于拿到官方背书**——这条不能因为
+"文字变具体了"就被读成"依据变硬了"。
+
+**M4 的两处实测收窄**（与 M1 的 §三 同一性质，都是"文档写了但机器不同意"）：
+
+| 文档表述 | 本机实测（2026-10-21） | 处理 |
+|---|---|---|
+| 上标 ¹²³ 变体（`COM¹`、`LPT³`）是保留设备名（MS Learn 原文 + `plan/01` §2 模块④） | `CreateFileW('COM¹.txt')` / `'COM².txt'` / `'LPT³.log'` **创建成功**，`Test-Path=True`，`Get-Content` 读得到。CMD 里 `echo test > COM¹` 确实失败（走了设备命名空间），但**提取器走的是 Win32 文件 API** | `accessibility` 按实测判 `OK`；收窄理由写进 `data/README.md` §4.2 的修订段。**不猜规范语气** |
+| `COM1`–`COM9` / `LPT1`–`LPT9` | `COM0.txt` / `LPT0.txt` **同样不可读**（`Test-Path=False`）；`COM10.txt` 起可读 | 保留名集合扩到 `COM0`–`COM9` / `LPT0`–`LPT9`（并集，不多报也不漏报） |
+| 保留名与尾随裁剪的先后 | `con.txt.` 落盘为 `con.txt`，而 `con.txt` 的 `Get-Content` 报错 | 保留名按**裁剪后**的组件匹配；两者同时成立时级别取 `WRITTEN_UNREADABLE`（更严重的那档），`reasons` 两条都留 |
 
 ## 六、M2 落地时的依据核对（2026-10-21）
 MOD-1 的六条规则已全部落地，每条 finding 都带 `precedent`。这里记下**落地时逐条核对的结果**，

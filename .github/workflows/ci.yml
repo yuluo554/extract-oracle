@@ -146,3 +146,48 @@ jobs:
           fi
           if [ "$fail" -ne 0 ]; then exit 1; fi
           echo "fold smoke OK"
+      - name: Accessibility smoke
+        # MOD-4 的交付态冒烟：四份样本各命中期望级别（退出码 1）；三条反向：
+        # `clean.zip` 三平台零异常（退 0）、`long_comp.zip` 不得判成截断、`CON.txt` 三证据齐。
+        # 退出码是口径（`data/README.md` §4.1），所以这里显式断言它，不用 `|| true` 吞掉。
+        shell: bash
+        run: |
+          set -uo pipefail
+          fail=0
+          for pair in \
+            "reserved.zip windows WRITTEN_UNREADABLE" \
+            "trailing.zip windows WRITTEN_TRUNCATED" \
+            "trim.zip windows WRITTEN_TRUNCATED" \
+            "long_comp.zip windows BLOCKED"
+          do
+            set -- $pair
+            fixture=$1
+            target=$2
+            level=$3
+            out=$(extract-oracle check "data/fixtures/$fixture" --target "$target" --module accessibility)
+            rc=$?
+            if [ "$rc" -ne 1 ]; then
+              echo "FAIL $fixture/$target: 期望退出码 1，实得 $rc"; fail=1
+            fi
+            echo "$out" | grep -q "\"$level\"" || { echo "FAIL $fixture/$target: 缺 $level"; fail=1; }
+          done
+          # `CON.txt` 的三条实测证据必须齐（第三级的来源，`data/README.md` §1.3.2）
+          con=$(extract-oracle check data/fixtures/reserved.zip --target windows --module accessibility)
+          for token in test_path_false get_content_error open_readable; do
+            echo "$con" | grep -q "\"$token\"" || { echo "FAIL CON.txt: 缺证据 $token"; fail=1; }
+          done
+          # 反向一：`clean.zip` 三平台零异常（退 0）
+          for target in windows macos linux; do
+            extract-oracle check data/fixtures/clean.zip --target "$target" --module accessibility > /dev/null
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+              echo "FAIL clean.zip/$target: 期望退出码 0（无异常），实得 $rc"; fail=1
+            fi
+          done
+          # 反向二：`long_comp.zip` 不得被判成 WRITTEN_TRUNCATED（M1 实测：创建即失败）
+          longc=$(extract-oracle check data/fixtures/long_comp.zip --target windows --module accessibility)
+          if echo "$longc" | grep -q "\"WRITTEN_TRUNCATED\": [1-9]"; then
+            echo "FAIL long_comp.zip: 组件超长被判成截断（应为 BLOCKED）"; fail=1
+          fi
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+          echo "accessibility smoke OK"

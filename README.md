@@ -1,6 +1,6 @@
 # extract-oracle · 归档提取预言机
 
-> **Status: v0.1.0 — M3 跨平台折叠（`structure.*` 六条 + `collision.*` 四条可用，其余模块待 M4–M5）**｜方法论：`ai-tool-project-sprint`｜布局门：`py -3.12 tools/check_sprint_layout.py`
+> **Status: v0.1.0 — M4 可访问性（`structure.*` 六条 + `collision.*` 四条 + `accessibility` 三级可用，其余模块待 M5）**｜方法论：`ai-tool-project-sprint`｜布局门：`py -3.12 tools/check_sprint_layout.py`
 
 **现有工具只做"单条规则检查"或"字段转储"，没有一个输出"谁会写出什么名字、谁覆盖谁、哪个工具会拒绝"。**
 
@@ -32,7 +32,7 @@
 | M1 | ✅ | fixture 补全（22/22）+ `$UpCase` 取表 + 四工具对照 |
 | M2 | ✅ | 三层解析 + MOD-1 双头差分与重叠（六条规则） + MOD-2 骨架 |
 | M3 | ✅ | 平台表接入 + MOD-3 跨平台折叠（四条规则、写序→存活者） |
-| M4 | ⬜ | MOD-4 三级可访问性 |
+| M4 | ✅ | MOD-4 三级可访问性 + `docs/rules.md` 定稿（5 行原句回填 + 反查表到逐规则） |
 | M5 | ⬜ | MOD-5 容器与预算 + MOD-2 收尾 |
 | M6 | ⬜ | 发布（tag + Release 附产物） |
 
@@ -56,13 +56,14 @@ extract-oracle inspect some.zip
 # 能力状态：五个模块各自落地了没
 extract-oracle capabilities
 
-# 判定入口（M3 起 `fold` 可用；判定层未就绪时退出码 3，绝不产出空 findings）
+# 判定入口（M4 起 `structure`/`fold`/`accessibility` 可用；判定层未就绪时退出码 3，绝不产出空 findings）
 extract-oracle check some.zip --target windows
 extract-oracle check some.zip --target windows,macos --format json
 
 # 只跑已落地的模块（报告里 modules 字段写明本次范围；点名未落地的模块照样退 3）
 extract-oracle check some.zip --target windows --module structure
 extract-oracle check some.zip --target windows,macos --module fold
+extract-oracle check some.zip --target windows --module accessibility
 ```
 
 **M2 起可用的判定**：`structure.*` 六条（`NAME_DIVERGES` / `CRC_DIVERGES` / `SIZE_DIVERGES` /
@@ -86,12 +87,30 @@ macOS 侧**只报 NFC**（`evidence_strength: medium`，依据为 UAX #15 + TN11
 **不报** `CASEFOLD`——大小写折叠与否是卷格式属性，而我们没有 macOS 折叠表，所以不猜（见
 `data/README.md` §4.3、`plan/05` §五 U15）。
 
+**M4 起可用的判定**：`entries[].accessibility`——每条目在每个目标平台上分四档
+（`BLOCKED` / `WRITTEN_UNREADABLE` / `WRITTEN_TRUNCATED` / `OK`，`OK` 不是"级别"），
+带 `reasons[]` 与 `evidence[]`。**第三档是本题的差异点**：`CON.txt` 不违规、写入成功、名字也没变，
+但应用层拿不到（`Test-Path`=False、`Get-Content` 报错、`open()` 读得到——三条都在 `evidence[]` 里）。
+竞品的判定停在"合不合规"，这里区分"**能不能写进去**"、"**写进去能不能被应用层拿到**"、
+"**拿到的还是不是原来那个名字**"：
+
+```bash
+# CON.txt / NUL.txt → WRITTEN_UNREADABLE（三证据齐）；aux.tar.gz 是可读对照组 → OK
+extract-oracle check data/fixtures/reserved.zip --target windows --module accessibility
+
+# 尾随空格/点被裁剪、`:` 被按 ADS 截断 → WRITTEN_TRUNCATED
+extract-oracle check data/fixtures/trailing.zip --target windows --module accessibility
+```
+
+分级口径（含 `COM0`/`LPT0` 也是保留名、上标 ¹²³ 变体**不是**、保留名按裁剪后组件匹配等
+本机实测收窄）唯一表述在 `data/README.md` §4.2，输出形状在 §4.11。
+
 ## 退出码
 
 | 码 | 语义 |
 |---|---|
-| 0 | 检查完成，无 finding |
-| 1 | 检查完成，有 finding |
+| 0 | 检查完成，无 finding、无 collision、无可访问性异常 |
+| 1 | 检查完成，有 finding / collision / 不可访问条目（三者同级） |
 | 2 | 输入无法解析（非 ZIP / 无 EOCD / 读不了） |
 | 3 | 口径或平台表缺失 / 判定模块未落地——**绝不静默退化为 0** |
 | 4 | 用法错误 |
@@ -100,9 +119,13 @@ macOS 侧**只报 NFC**（`evidence_strength: medium`，依据为 UAX #15 + TN11
 
 ## 已知限制（诚实清单）
 
-- **判定层已落地 MOD-1 与 MOD-3**：`structure.*` 六条 + `collision.*` 四条可用；
-  `accessibility` / `container` 与编码推断仍待 M4–M5。不带 `--module` 的 `check` 返回 3
+- **判定层已落地 MOD-1 / MOD-3 / MOD-4**：`structure.*` 六条 + `collision.*` 四条 + `accessibility`
+  三级可用；`container` / `budget.*` 与编码推断仍待 M5。不带 `--module` 的 `check` 返回 3
   是**设计语义**，不是故障。
+- **Linux/macOS 侧的可访问性只报"创建即失败"**：空名 / NUL / 空组件这类跨平台都成立的；
+  保留名、尾随裁剪、冒号截断都是 **Windows 专属**规则，不在别的平台上猜（`plan/05` §五 U2/U19）。
+- **上标 ¹²³ 设备名（`COM¹`/`LPT³`）按实测判 `OK`**：`CreateFileW` 能创建、应用层也读得到；
+  MS Learn 里 `echo test > COM¹` 失败是 CMD 走设备命名空间，而提取器走文件 API（`plan/05` §五 U17）。
 - **macOS 侧不报大小写折叠**：折叠与否是卷格式属性（libfsapfs 的观察只说"大小写不敏感卷"），
   而我们没有 macOS 折叠表——用 `lower()` 近似会误判，所以只报 `NFC`。这是**收窄不是猜测**。
 - **Windows 折叠的强度标 `table_simulated` 而非 `measured`**：判据是"表 + 目标平台"，
@@ -121,7 +144,7 @@ src/extract_oracle/   解析（zip_reader）/ 判定（rules/）/ 平台表访�
 tools/                gen_fixtures.py（程序化 fixture）+ 布局门 + 脱敏门
 tests/                契约 / 确定性 / fixture 对账 / 判定验收 / 三工具行为 / 门自身变异
 data/                 依据台账（README.md）+ fixtures + truth + tool-matrix（四工具实测）+ platforms（$UpCase 表）
-docs/                 rules.md（规范原句，M4）/ divergence.md（四工具实测，M6）
+docs/                 rules.md（规范原句台账，M4 定稿）/ divergence.md（四工具实测，M6）
 plan/                 00–06 计划套件 + HANDOFF + RELEASE
 scripts/              build.py（PyInstaller onefile）
 ```

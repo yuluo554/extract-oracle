@@ -75,6 +75,14 @@
 | Python `open('CON.txt','rb').read()` | **读到内容** |
 
 → "文件存在但应用层拿不到"的最小可信证据；本题 MOD-4 的第三级 `WRITTEN_UNREADABLE` 由此而来。
+这三条就是 `entries[].accessibility.*.evidence[]` 的固定枚举 `test_path_false` /
+`get_content_error` / `open_readable`（§4.11）——**名字对得上、顺序也对得上**，
+`reserved.zip` 的 `CON.txt`/`NUL.txt` 必须三条齐（`tests/test_accessibility.py` 钉住）。
+
+**M4 复核（2026-10-21，`CreateFileW` + `Test-Path` + `Get-Content` 三路）**：这条结论对
+`CON`/`NUL`/`PRN`/`AUX`/`CLOCK$`/`COM0`–`COM9`/`LPT0`–`LPT9` 成立；对 `COM10` 起、对
+`aux.tar.gz`（"最后一个点之前"是 `aux.tar`）、对**上标 ¹²³ 变体**（`COM¹.txt` 等）**不成立**
+——后三类的 `Test-Path=True`、`Get-Content` 读得到。逐条实测见 §4.2 的 M4 修订段。
 
 #### 1.3.3 NTFS 折叠 ≠ casefold / upper（8 组字符对，M1 已按机器实测复核）
 
@@ -192,8 +200,8 @@
 
 | 退出码 | 语义 | 判据 |
 |---|---|---|
-| `0` | 检查完成，**无** finding 且**无** collision | 至少一个条目被检查且 `findings` 与 `collisions` 都为空 |
-| `1` | 检查完成，**有** finding **或** 有 collision | 两者都是判定产出，任一非空即 `1`（`case.zip --target windows --module fold` 只产 collision，照样退 `1`） |
+| `0` | 检查完成，**无** finding 且**无** collision 且**无可访问性异常** | 至少一个条目被检查且 `findings`、`collisions`、`accessibility_count` 三者都为 0 |
+| `1` | 检查完成，**有** finding、有 collision **或**有不可访问条目 | 三者都是判定产出，任一非空即 `1`（`case.zip --target windows --module fold` 只产 collision，照样退 `1`；`reserved.zip --module accessibility` 只产 `WRITTEN_UNREADABLE`，也退 `1`） |
 | `2` | **输入无法解析**（不是 ZIP / EOCD 找不到 / CD 或 LFH 解析不了 / 文件读不了） | 不得退化为 `0`（"依赖/输入缺失不得静默变成合法空结果"） |
 | `3` | **口径/平台表缺失**（如 `$UpCase` 表未提供而目标含 windows）**或判定模块未落地**（含 `--module` 点名未落地模块、ZIP64 哨兵值读不到 ZIP64 EOCD） | 不得静默跳过该判定后返回 `0`；不得把"没点名"当成"没问题" |
 | `4` | 用法错误 | 参数非法 |
@@ -218,17 +226,31 @@
 
 | 级别 | 定义（唯一表述） |
 |---|---|
-| `BLOCKED` | 目标平台在创建时即失败：Linux 名含 `/`；Windows 名含 `< > " / \ | ? *` 或 0x00–0x1F、或单个组件超 255 个 UTF-16 码元；名字为空或仅为 `.`/`..` |
-| `WRITTEN_UNREADABLE` | 创建成功但**应用层不可达**：Windows 保留设备名（CON/PRN/AUX/NUL/COM1-9/LPT1-9，含 `CLOCK$`）出现在**最后一个点之前**（`CON.txt`、`COM1.log`、`AUX.tar`，也含上标 ¹²³ 变体） |
+| `BLOCKED` | 目标平台在创建时即失败：名字为空、含空组件（`a//b`、`a/`、`/a`）、仅为 `.`/`..`、含 NUL；Windows 名含 `< > " / \ | ? *` 或 0x01–0x1F、或单个组件超 255 个 UTF-16 码元 |
+| `WRITTEN_UNREADABLE` | 创建成功但**应用层不可达**：Windows 保留设备名（CON/PRN/AUX/NUL/COM0-9/LPT0-9/`CLOCK$`）出现在**最后一个点之前**（`CON.txt`、`COM1.log`、`AUX.tar`） |
 | `WRITTEN_TRUNCATED` | 创建成功但**名字已变**：尾随空格/点被裁剪（Windows）、`:` 被按 ADS 截断为冒号前的部分 |
 
 > `OK` 是第四种取值（无上述三情形的条目），但**不是"级别"**，不参与分级评分。
+>
+> **`/` 是路径分隔符，不是非法字符**：`a/b` 是"目录 `a` + 文件 `b`"（正常条目），只有**空组件**
+> 才创建失败。Linux 侧真正让创建失败的是 NUL 与空名，依据是 POSIX §3.170 `Filename`
+> （"shall not contain the `<NUL>` or `<slash>` characters"）——注意那是**文件名**层面的约束，
+> 不是"路径里不能有 `/`"（`docs/rules.md` §一 #15、§五 更正①）。
 >
 > **口径修订（2026-10-21，M1 本机实测，`plan/05` §五 U11）**：`data/README.md` 初版把
 > 「非法字符 `:`」与「组件超长」都归入 `BLOCKED`/`WRITTEN_TRUNCATED`，实测不成立：
 > - `colon:name.txt` **创建成功**，NTFS 按 ADS 语义把它存成 `colon`（名字变了，不是失败）；
 > - 单组件 256 字符 **`CreateFileW` 直接失败**（`ERROR_INVALID_NAME` 123），**加 `\\?\` 前缀也一样**；
 > - 保留名只按"最后一个点之前"整体匹配：`AUX.txt` 不可读，而 `AUX.tar.gz` **真可读**（区别于"含扩展名即保留"的初版表述）。
+>
+> **口径修订（2026-10-21，M4 本机实测，逐条见 `docs/rules.md` §五）**：
+> - **上标 ¹²³ 变体不算保留名**：`COM¹.txt` / `COM².txt` / `LPT³.log` 的 `CreateFileW` **创建成功**、
+>   `Test-Path=True`、`Get-Content` 读得到。MS Learn 的 `echo test > COM¹` 失败是 **CMD 走了设备命名空间**；
+>   提取器走的是 Win32 文件 API，所以按文件 API 的实测判 `OK`。
+> - **`COM0` / `LPT0` 也算保留名**（实测 `Test-Path=False`）；`COM10` 起不算（实测 `Test-Path=True`）。
+>   MS Learn 的枚举从 1 起，但机器从 0 起都拿不到——本表按并集写。
+> - **保留名按裁剪后的组件匹配**：`con.txt.` 落盘为 `con.txt`，而 `con.txt` 读不到 →
+>   裁剪与保留名同时成立时级别取 `WRITTEN_UNREADABLE`（更严重的那档），`reasons[]` 两条都留。
 
 ### 4.3 折叠规则来源与判据
 
@@ -361,6 +383,63 @@ Windows 侧一律 `table_simulated` 而不是 `measured`——判据是**表 + �
 `volume` 与 `probed_at_utc` 只出现在 `platforms --verify` 的诊断输出里（那是一次性查表可信度检查，
 不进任何 `check` 报告）。表身份用 `sha256` 表达——**这是"表换过没有"的跨机判据**。
 
+
+### 4.11 `entries[].accessibility` 输出形状（MOD-4 的唯一表述）
+
+> `check` 报告里每个条目多一个 `accessibility` 键——**只在本次 `--module` 范围含 `accessibility` 时出现**。
+> `inspect` 恒不带（它是结构事实，不产判定）。字段集**新增即改本节**（同提交改 `rules/access.py`
+> 与 `tests/test_accessibility.py`），"新增键"与"漏写键"是两件事。
+
+```json
+{
+  "index": 0,
+  "cdName": "CON.txt",
+  "accessibility": {
+    "windows": {
+      "level": "WRITTEN_UNREADABLE",
+      "reasons": ["reserved_device_name"],
+      "evidence": ["test_path_false", "get_content_error", "open_readable"]
+    }
+  }
+}
+```
+
+| 字段 | 类型 | 口径 |
+|---|---|---|
+| `accessibility` | object | 键 = **本次点名的平台**（没点名的平台不出键；三个 `--target` 的结论各自可断言） |
+| `accessibility.<platform>.level` | string | §4.2 的四枚举之一；`OK` 不是级别 |
+| `accessibility.<platform>.reasons` | string[] | 机读原因，**同档内全收不短路**；取值见下 |
+| `accessibility.<platform>.evidence` | string[] | 机读依据，**封闭词表**；保留名固定三条齐（§1.3.2） |
+
+**`reasons[]` 的封闭词表**（`rules/access.py::REASON_TOKENS`）：
+`empty_name` / `nul_byte` / `empty_component` / `dot_component` / `illegal_char` /
+`component_too_long` / `reserved_device_name` / `trailing_space_or_dot` / `ads_colon_truncation`。
+
+**`evidence[]` 的封闭词表**（`rules/access.py::EVIDENCE_TOKENS`）：上列九项 + `test_path_false` /
+`get_content_error` / `open_readable`。后三条是**实测来源**（§1.3.2），`WRITTEN_UNREADABLE` 固定三条齐，
+其余按命中的 reason 一对一。
+
+**分级顺序固定**（先命中档胜出，但 `reasons` / `evidence` 收集全部命中项）：
+
+```
+1. BLOCKED             空名 / NUL / 空组件 / "." ".." / Windows 非法字符 / Windows 组件 > 255 码元
+2. WRITTEN_UNREADABLE  Windows 保留设备名（按**裁剪后**组件、最后一个点之前匹配）
+3. WRITTEN_TRUNCATED   Windows 尾随空格/点、`:` 的 ADS 截断
+4. OK
+```
+
+> 为什么 2 在 3 之前：`con.txt.` 落盘为 `con.txt`，而 `con.txt` 应用层读不到——两者同时成立时
+> 用户实际遭遇的是"读不到"而不是"名字变了"（M4 本机实测，§4.2 修订段）。
+
+**`summary` 的邻近字段**：`accessibility_count`（非 `OK` 的 (条目, 平台) 对数）与
+`accessibility_levels`（逐级计数，四键恒在）。**不在范围内时 `accessibility_levels` 为 `null`
+而不是 0**——"没查"与"全 OK"是两件事。
+
+**退码口径**：`accessibility_count > 0` 即判定产出，`check` 退 `1`（与 `findings` / `collisions` 同级，§4.1）。
+
+**证据强度**：§4.2 的判据来自**本机 Windows 实测** + MS Learn / POSIX 原文。Linux/macOS 侧只判
+"空名 / NUL / 空组件"这类**跨平台都成立**的创建失败，其余留 `OK`——`plan/05` §五 U2 的
+"macOS/Linux 落盘行为未实测"在这里的落地形式是**不猜**（不是"推定 OK"）。
 
 ---
 

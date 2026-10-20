@@ -17,8 +17,16 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-#: 报告 schema 版本。M2 起 `inspect` 增加 `entries` / `names` 两层（加法，不改既有键）。
+#: 报告 schema 版本。M2 起 `inspect` 增加 `entries` / `names` 两层（加法，不改既有键）；
+#: M4 起 `check` 的 `entries[]` 增加 `accessibility`（同样只加不改）。
 SCHEMA_VERSION = "0.2"
+
+#: 文本面渲染 `accessibility` 计数时的行内顺序（`data/README.md` §4.2 的四个取值）。
+#:
+#: 这里刻意**不** import `rules/access.py`：报告层与判定层是并列的下游（都只被 `cli` 使用），
+#: 加一条 `report → rules` 的边会让分层图多出一个方向。两份枚举的一致性由
+#: `tests/test_accessibility.py::test_report_level_order_matches_rules` 钉住。
+ACCESS_LEVELS: tuple[str, ...] = ("BLOCKED", "WRITTEN_UNREADABLE", "WRITTEN_TRUNCATED", "OK")
 
 
 def dumps_json(payload: dict[str, Any]) -> str:
@@ -28,7 +36,10 @@ def dumps_json(payload: dict[str, Any]) -> str:
 
 
 def render_text(payload: dict[str, Any]) -> str:
-    """人读面。M3 起渲染 `summary` + `findings` + `collisions`；字段集由 `plan/03` 固定。"""
+    """人读面。M3 起渲染 `summary` + `findings` + `collisions`；M4 加 `accessibility`。
+
+    行序由 payload 的固定键顺序决定，不遍历 dict（`data/README.md` §4.8）。
+    """
 
     lines: list[str] = []
     summary = payload.get("summary", {})
@@ -42,6 +53,12 @@ def render_text(payload: dict[str, Any]) -> str:
             collisions=summary.get("collision_count", 0),
         )
     )
+    if summary.get("accessibility_levels") is not None:
+        levels = summary["accessibility_levels"]
+        lines.append(
+            "accessibility "
+            + " ".join(f"{name}={levels.get(name, 0)}" for name in ACCESS_LEVELS)
+        )
     findings = payload.get("findings", [])
     if findings:
         lines.append("")
