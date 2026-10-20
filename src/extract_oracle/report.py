@@ -17,7 +17,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "0.1"
+#: 报告 schema 版本。M2 起 `inspect` 增加 `entries` / `names` 两层（加法，不改既有键）。
+SCHEMA_VERSION = "0.2"
 
 
 def dumps_json(payload: dict[str, Any]) -> str:

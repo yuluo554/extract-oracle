@@ -44,10 +44,64 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Fixture regeneration check
         run: python tools/gen_fixtures.py --check
+      # 三工具行为断言（tests/test_tool_behaviour.py）需要 unzip 与 7-Zip。
+      # 缺工具时**不许 skip 成假绿**：装齐后设 ORACLE_REQUIRE_TOOLS=1，缺失即失败。
+      - name: Install archive tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip p7zip-full libarchive-tools
+      - name: Install archive tools (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install p7zip
+          # unzip 与 bsdtar 随 macOS 自带；缺任一则下面的断言会明确失败
+      - name: Install archive tools (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          # Windows runner 自带 bsdtar（System32\tar.exe）；7-Zip 与 unzip 需要显式装。
+          choco install -y 7zip
+          echo "C:\Program Files\7-Zip" >> $env:GITHUB_PATH
+          # Info-ZIP unzip 在 Windows runner 上由 Git for Windows 提供
+          echo "C:\Program Files\Git\usr\bin" >> $env:GITHUB_PATH
       - name: Pytest
+        env:
+          ORACLE_REQUIRE_TOOLS: "1"
         run: python -m pytest
       - name: Console script smoke
         run: |
           extract-oracle --version
           extract-oracle capabilities
           extract-oracle inspect data/fixtures/clean.zip --format json
+      - name: Structure findings smoke
+        # 判定层的交付态冒烟：六个结构样本各命中一条（退出码 1），`clean.zip` 零 finding（退出码 0）。
+        # 退出码是口径（`data/README.md` §4.1），所以这里显式断言它，不用 `|| true` 吞掉。
+        shell: bash
+        run: |
+          set -uo pipefail
+          fail=0
+          for pair in \
+            "mismatch_name.zip structure.NAME_DIVERGES" \
+            "alias_lfh.zip structure.FLAG_DIVERGES" \
+            "overlap.zip structure.LFH_OVERLAP" \
+            "wrong_count.zip structure.CD_COUNT_MISMATCH" \
+            "crc_diverge.zip structure.CRC_DIVERGES" \
+            "size_diverge.zip structure.SIZE_DIVERGES"
+          do
+            set -- $pair
+            fixture=$1
+            rule=$2
+            out=$(extract-oracle check "data/fixtures/$fixture" --target windows --module structure)
+            rc=$?
+            if [ "$rc" -ne 1 ]; then
+              echo "FAIL $fixture: 期望退出码 1，实得 $rc"; fail=1
+            fi
+            echo "$out" | grep -q "\"$rule\"" || { echo "FAIL $fixture: 缺 $rule"; fail=1; }
+          done
+          extract-oracle check data/fixtures/clean.zip --target windows --module structure > /dev/null
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "FAIL clean.zip: 期望退出码 0（零误报基线），实得 $rc"; fail=1
+          fi
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+          echo "structure smoke OK"

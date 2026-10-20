@@ -19,6 +19,8 @@ class ReasonCode(str, Enum):
     USAGE_ERROR = "usage_error"
     INPUT_UNREADABLE = "input_unreadable"
     EOCD_NOT_FOUND = "eocd_not_found"
+    CD_UNREADABLE = "cd_unreadable"
+    LFH_UNREADABLE = "lfh_unreadable"
     ZIP64_UNSUPPORTED = "zip64_unsupported"
     PLATFORM_TABLE_MISSING = "platform_table_missing"
     CAPABILITY_MISSING = "capability_missing"
@@ -29,6 +31,9 @@ EXIT_FOR_REASON: dict[ReasonCode, ExitCode] = {
     ReasonCode.USAGE_ERROR: ExitCode.USAGE_ERROR,
     ReasonCode.INPUT_UNREADABLE: ExitCode.INPUT_UNREADABLE,
     ReasonCode.EOCD_NOT_FOUND: ExitCode.INPUT_UNREADABLE,
+    # CD/LFH 解析不了 = 输入不可解析（`data/README.md` §4.1 的第 2 档），不是"没发现问题"。
+    ReasonCode.CD_UNREADABLE: ExitCode.INPUT_UNREADABLE,
+    ReasonCode.LFH_UNREADABLE: ExitCode.INPUT_UNREADABLE,
     ReasonCode.ZIP64_UNSUPPORTED: ExitCode.CAPABILITY_MISSING,
     ReasonCode.PLATFORM_TABLE_MISSING: ExitCode.CAPABILITY_MISSING,
     ReasonCode.CAPABILITY_MISSING: ExitCode.CAPABILITY_MISSING,

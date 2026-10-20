@@ -81,6 +81,59 @@ def test_check_refuses_while_modules_missing(capsys):
     assert set(payload["detail"]["missing_modules"]) == set(missing_core())
 
 
+def test_check_module_scope_refuses_unimplemented_module(capsys):
+    """`--module` 是**收窄**不是**豁免**：点名一个没落地的模块照样退 3。"""
+
+    unimplemented = [module.name for module in MODULES if not module.implemented]
+    if not unimplemented:  # pragma: no cover
+        pytest.skip("五模块已全部落地")
+    code = main(
+        ["check", str(FIXTURES / "clean.zip"), "--target", "windows", "--module", unimplemented[0]]
+    )
+    assert code == int(ExitCode.CAPABILITY_MISSING)
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    payload = json.loads(captured.err.strip())
+    assert payload["detail"]["missing_modules"] == [unimplemented[0]]
+
+
+def test_check_unknown_module_is_usage_error():
+    assert main(["check", str(FIXTURES / "clean.zip"), "--target", "windows", "--module", "nope"]) == int(
+        ExitCode.USAGE_ERROR
+    )
+
+
+def test_check_structure_module_reports_scope_and_findings(capsys):
+    """`--module structure` 的报告必须写明**本次范围**（防"只跑一个模块"被读成"全查过"）。"""
+
+    code = main(["check", str(FIXTURES / "mismatch_name.zip"), "--target", "windows", "--module", "structure"])
+    assert code == int(ExitCode.FINDINGS)
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["modules"] == ["structure"]
+    assert [item["ruleId"] for item in payload["findings"]] == ["structure.NAME_DIVERGES"]
+    assert payload["summary"]["finding_count"] == 1
+
+
+def test_check_clean_archive_returns_zero_with_structure_module(capsys):
+    """零误报基线的 CLI 面：无 finding 才允许退 0（`data/README.md` §4.1）。"""
+
+    code = main(["check", str(FIXTURES / "clean.zip"), "--target", "windows", "--module", "structure"])
+    assert code == int(ExitCode.OK)
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["findings"] == []
+    assert payload["summary"]["finding_count"] == 0
+
+
+def test_check_module_forms_are_equivalent():
+    from extract_oracle.cli import _parse_modules
+
+    assert _parse_modules(["structure,fold"]) == _parse_modules(["structure", "fold"]) == [
+        "structure",
+        "fold",
+    ]
+    assert _parse_modules(None) is None
+
+
 def test_capabilities_reports_all_modules(capsys):
     assert main(["capabilities"]) == int(ExitCode.OK)
     out = capsys.readouterr().out
@@ -102,6 +155,61 @@ def test_inspect_reports_eocd_facts(capsys):
     assert payload["eocd"]["declared_entries"] == 2
     assert payload["findings"] == []
     assert payload["command"] == "inspect"
+
+
+def test_inspect_reports_three_layers(capsys):
+    """M2：`inspect` 必须给出 CD 层与每条 LFH 的结构事实（含 `lfhEnd`）。"""
+
+    assert main(["inspect", str(FIXTURES / "clean.zip"), "--format", "json"]) == int(ExitCode.OK)
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["cd"]["actual_entries"] == 2
+    assert payload["cd"]["zip64"] is False
+    entries = payload["entries"]
+    assert [item["index"] for item in entries] == [0, 1]
+    for item in entries:
+        # LFH 三层完整化：起点、终点、CD 偏移、两侧 flags/CRC/大小都要在
+        for key in (
+            "lfhOffset",
+            "lfhEnd",
+            "cdOffset",
+            "lfhFlags",
+            "cdFlags",
+            "lfhCrc",
+            "cdCrc",
+            "lfhCompSize",
+            "cdCompSize",
+            "lfhUncompSize",
+            "cdUncompSize",
+            "method",
+        ):
+            assert key in item, key
+        assert item["lfhEnd"] > item["lfhOffset"]
+        assert item["cdOffset"] >= item["lfhEnd"]
+        # 原始字节与展示形都要在（原始字节是 MOD-2 的唯一可靠输入）
+        assert bytes.fromhex(item["cdNameHex"]).decode() == item["cdName"]
+
+
+def test_inspect_reports_name_layer_without_verdicts(capsys):
+    """`inspect` 是结构事实：有 `names`（原始字节/bit11/extra），但 `findings` 恒空。"""
+
+    assert main(["inspect", str(FIXTURES / "upath.zip"), "--format", "json"]) == int(ExitCode.OK)
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["findings"] == []
+    facts = payload["names"][0]
+    assert facts["bit11"] is False
+    assert facts["rawNameHex"] == "中文名.txt".encode("gbk").hex()
+    assert facts["upath"]["present"] is True
+    assert facts["upath"]["crc_valid"] is True
+
+
+def test_inspect_does_not_produce_rule_ids(capsys):
+    """`inspect` 不得产出任何 `ruleId`（`plan/00` D13：结构事实与判定不重叠）。"""
+
+    for name in ("mismatch_name.zip", "overlap.zip", "wrong_count.zip"):
+        main(["inspect", str(FIXTURES / name), "--format", "json"])
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["findings"] == [], name
+        assert "ruleId" not in json.dumps(payload)
 
 
 def test_multi_target_forms_are_equivalent():

@@ -95,3 +95,29 @@ M1 的本机实测（`plan/05` §五 U11）推翻了 `data/README.md` 与 `plan/
 - [ ] `ruleId` → 依据 反查表补齐到**每条规则一个 `#` 行号**（现在有 6 条是"集合引用"）
 - [ ] `İ/i` 与 `é/É` 两行与 `data/README.md` §1.3.3 的差异裁决（要么改 §1.3.3，要么给出复核条件）
 - [ ] APFS 行必须在正文里重复写"实现观察，非 Apple 官方规范"（`plan/00` 决策 ④）
+
+## 六、M2 落地时的依据核对（2026-10-21）
+
+MOD-1 的六条规则已全部落地，每条 finding 都带 `precedent`。这里记下**落地时逐条核对的结果**，
+因为"有 `precedent` 字段"和"`precedent` 写对了"是两件事：
+
+| `ruleId` | 落地用的依据 | 核对结果 |
+|---|---|---|
+| `structure.NAME_DIVERGES` | 上表 #9 + #10（实现选择） | ✅ 枚举取值 `libarchive_reads_lfh`（libarchive/7-Zip 取 LFH）。**7-Zip 也取 LFH**——上表 #10 的原话只点名了 libarchive 是"diverges"，而本机实测 7-Zip 同样取 LFH。枚举里**没有** `7zip_reads_lfh`，所以 7-Zip 的读头选择只进 `evidence.readers`，不进 `precedent`（不就地扩枚举） |
+| `structure.CRC_DIVERGES` | 上表 #8（结构自证）+ APPNOTE 字段定义 | ✅ bit 3 置位且 LFH 值为 0 → 豁免；**bit 3 置位但值非 0 仍报**（有专门的反向对照测试）。本机实测：Python 抛 `BadZipFile: Bad CRC-32`、libarchive rc=1、7-Zip rc=2、unzip rc=0 |
+| `structure.SIZE_DIVERGES` | 同上 | ✅ 同上豁免。本机实测：libarchive 直接报 `Inconsistent uncompressed size: 17 in central directory, 10 in local header`；**Python 照收（rc=0）**——与 CRC 那一份不同，这条区别本身是"分歧方向"的一部分 |
+| `structure.FLAG_DIVERGES` | 上表 #8（结构自证） | ✅ 全 16 位比较，`differingBits` 给出差异位。本机实测：四工具都写出同名文件，只有 unzip rc=1 |
+| `structure.LFH_OVERLAP` | 结构自证 | ✅ 区间用 **LFH 自己声明的 `comp_size`** 算，不是 CD 的（否则 CD 大小被篡改时判不出来）。`precedent` = `structural_self_evidence`（**不是**某个工具的读头选择）。本机实测：Python 抛 `BadZipFile: Overlapped entries`，unzip/7-Zip/bsdtar 全部 rc=0 解出两个文件 |
+| `structure.CD_COUNT_MISMATCH` | APPNOTE EOCD 字段定义 | ✅ 按**签名**遍历 CD，不按 EOCD 声明数遍历（否则永远相等）。`precedent` = `structural_self_evidence`。ZIP64 哨兵值读不到 ZIP64 EOCD → `zip64_unsupported`（退出码 3），不猜 |
+
+**禁令复核**：六条规则的 `message` / `precedent` / `evidence` 里逐字检索过
+「规范要求」「spec requires」「must be identical」「SHOULD match」，**零命中**。
+判据落在 `tests/test_structure_diff.py::test_no_finding_claims_the_spec_requires_lfh_cd_agreement`。
+
+**两条口径更正**（M2 实测，`plan/05` §五 U13/U14）：
+
+1. `data/README.md` §1.3.1 把 Python 在 `mismatch_name.zip` 上记成"`BadZipFile` 硬失败"。精确说法是：
+   `namelist()` **返回 CD 名** `evil.txt`，拒绝发生在 `read()`。所以它属于"取 CD 名但校验时拒绝"，
+   与 unzip 的"取 CD 名并照解"是**同一读头选择下的两种严格度**。
+2. `plan/03` §MOD-2 原验收句"`upath.zip` 7-Zip 出 `café.txt` 而 Python/unzip 出 `caf茅.txt`"**不成立**——
+   0x7075 CRC 有效时四工具一致写出 `café.txt`。要展示编码分歧得用 `upath_badcrc.zip`。

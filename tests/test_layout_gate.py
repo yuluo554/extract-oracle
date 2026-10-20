@@ -158,12 +158,37 @@ def test_m4_delete_done_milestone_handoff_is_red(sandbox: Path):
 
 
 def test_m4_delete_next_handoff_is_red(sandbox: Path):
-    """`LAYOUT.HANDOFF_NEXT` 自己的靶子：删"下一棒"（M2）的交接单。"""
+    """`LAYOUT.HANDOFF_NEXT` 自己的靶子：删"下一棒"的交接单。
 
-    (sandbox / "plan" / "HANDOFF-M2.md").unlink()
+    **不写死里程碑号**：M2 收尾后"下一棒"从 M2 变成 M3，写死 `HANDOFF-M2` 会让本测试在
+    里程碑推进时变成假红（实测踩过）。靶子按门自己的判据算：`min(未完成里程碑)`。
+    """
+
+    next_handoff = _next_handoff(sandbox)
+    (sandbox / "plan" / next_handoff).unlink()
     code, out = _run_gate(sandbox)
     assert code == 1
     assert "LAYOUT.HANDOFF_NEXT" in _fails(out)
+
+
+def _next_handoff(root: Path) -> str:
+    """按 `plan/05` §二状态表算出"下一棒"的交接单文件名（与门同源的判据）。"""
+
+    text = (root / "plan" / "05-里程碑与发布.md").read_text(encoding="utf-8")
+    done, all_milestones = set(), set()
+    for line in text.split("\n"):
+        match = re.match(r"^\|\s*\*{0,2}M(\d+)\b", line)
+        if not match:
+            continue
+        cells = [c.strip() for c in line.split("|")[1:]]
+        if "✅" in cells or "⬜" in cells:
+            number = int(match.group(1))
+            all_milestones.add(number)
+            if "✅" in cells:
+                done.add(number)
+    pending = sorted(all_milestones - done)
+    assert pending, "没有未完成里程碑——本判据无靶子"
+    return f"HANDOFF-M{pending[0]}.md"
 
 
 def test_doc_tools_judgement_is_not_empty(sandbox: Path):
