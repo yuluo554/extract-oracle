@@ -148,7 +148,7 @@
 |---|---|---|---|
 | M0 出题与骨架 | `plan/00` + `plan/01` + `data/README.md` + `.gitignore` + 中文首提交；**方法论装订**（`AGENTS.md` + 布局门 + 脱敏门 + `plan/00` 顶部一行）；`plan/02–06`；可运行骨架（`src/`、`pyproject`、`scripts/build.py`）；生成器骨架；CI 预置 | 十段式齐；三态齐；台账单一真相源；首提交经 `git log` 验证；布局门全绿且变异可红；脱敏门 0 命中；`pytest` 全绿；`check` 未就绪时退出码 3 | ✅ |
 | **M1 数据先行** | `tools/gen_fixtures.py`（`struct.pack`）+ 全部 fixture 与真值 + **四工具对照表实测脚本** + `$UpCase` 取表脚本 | fixture 重跑逐字节一致（22/22）；每个判定项至少一个 fixture 与一份真值；四工具对照表每格有实测命令与输出（22×4）；`$UpCase` 表可取且记录卷标识、探测环境、sha256 | ✅ |
-| **M2 双头差分** | MOD-1 全部六条规则 + MOD-2 骨架（原始字节 + bit11 + extra 解析） | 四 fixture 各命中对应 code；三工具行为断言在 CI 三平台跑；退出码语义落地 | ✅ |
+| **M2 双头差分** | MOD-1 全部六条规则 + MOD-2 骨架（原始字节 + bit11 + extra 解析） | 六 fixture 各命中对应 code（M0 初版「四」按当时规则数，M1 补齐后加严）；三工具行为断言在 CI 三平台跑；退出码语义落地 | ✅ |
 | **M3 折叠** | MOD-3：平台表 + `collision.*` + 写序→存活者 | `case.zip` 存活者正确；`norm.zip` 分平台结论正确；8 组字符对回归全通过 | ⬜ |
 | **M4 可访问性** | MOD-4 三级分级 + `docs/rules.md` | `CON.txt`→`WRITTEN_UNREADABLE` 附三证据；`trailing.`→`WRITTEN_TRUNCATED`；保留名边界全绿；每条规则可回原句 | ⬜ |
 | **M5 容器与编码** | MOD-5 容器/预算 + MOD-2 收尾（编码推断与 0x7075 全量）+ 确定性导出 | 四 mimetype fixture 各命中一 code；`zh_gbk.zip`/`upath.zip` 预测与实测一致；双跑 byte 级一致 | ⬜ |
@@ -164,7 +164,7 @@
 
 | 模块 | `ruleId` 前缀 | 核心 fixture | 主验收断言 |
 |---|---|---|---|
-| MOD-1 双头差分与重叠 | `structure.*` | `mismatch_name.zip`、`alias_lfh.zip`、`overlap.zip`、`wrong_count.zip` | 四 fixture 各命中一 code + 三工具行为在 CI 上成立 |
+| MOD-1 双头差分与重叠 | `structure.*` | `mismatch_name.zip`、`alias_lfh.zip`、`overlap.zip`、`wrong_count.zip`、`crc_diverge.zip`、`size_diverge.zip` | 六 fixture 各命中一 code + 三工具行为在 CI 上成立 |
 | MOD-2 编码推断与 0x7075 | `encoding.*` / `upath` | `zh_gbk.zip`、`upath.zip` | 三提取器预测互不相同且与实测一致 |
 | MOD-3 跨平台折叠 | `collision.*` | `case.zip`、`norm.zip`、8 组字符对 | 存活者正确；分平台结论正确；近似法被判错 |
 | MOD-4 可访问性分级 | `accessibility` | `reserved.zip`、`trailing.zip` | `WRITTEN_UNREADABLE` / `WRITTEN_TRUNCATED` 分级正确 |
