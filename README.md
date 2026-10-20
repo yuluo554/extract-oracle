@@ -98,8 +98,16 @@ scripts/              build.py（PyInstaller onefile）
 ```bash
 py -3.12 tools/check_sprint_layout.py     # 布局门（新对话第一件事）
 py -3.12 tools/check_desensitized.py      # 脱敏门（发布前必跑，CI 同 job）
+py -3.12 tools/check_publish_ready.py     # 发布就绪门：这个仓库现在能不能推上 GitHub
 py -3.12 tools/gen_fixtures.py --check    # fixture 重生成逐字节一致
 py -3.12 -m pytest
+```
+
+要建仓并首推（**默认 dry-run**，加 `--apply` 才真推）：
+
+```bash
+py -3.12 tools/bootstrap_remote.py --repo <owner>/<repo>            # 只打印计划
+py -3.12 tools/bootstrap_remote.py --repo <owner>/<repo> --apply    # 建 public 仓 + push + sha 对账
 ```
 
 ## License

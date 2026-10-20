@@ -12,6 +12,7 @@ py -3.12 tools/check_desensitized.py
 - 续接对话：读 `plan/HANDOFF-M<k>.md`（那是第 k 棒的收尾交接单），**先跑上面两条门**。
 - 接手对话（无 HANDOFF）：先读 `plan/00`、`plan/05`、`plan/06` 与各 HANDOFF，重建"当前状态 + K 口径清单"再动手。
 - **门不存在 = 本项目没装订** → 先补第零步三件（本文件 + 布局门 + `plan/00` 顶部一行），再做别的。
+- **要推 GitHub 之前**：`py -3.12 tools/check_publish_ready.py` 必须全绿（它判"能不能推"，不判"发没发布"）。
 
 ## 强制布局（布局门逐条断言，改动前先看这里）
 
@@ -47,6 +48,8 @@ py -3.12 tools/check_desensitized.py
 |---|---|
 | 布局门 | `py -3.12 tools/check_sprint_layout.py` |
 | 脱敏门 | `py -3.12 tools/check_desensitized.py` |
+| 发布就绪门（可上传性） | `py -3.12 tools/check_publish_ready.py` |
+| 建仓 + 首推（默认 dry-run） | `py -3.12 tools/bootstrap_remote.py --repo <owner>/<repo>` |
 | fixture 自检 | `py -3.12 tools/gen_fixtures.py --check` |
 | 测试 | `py -3.12 -m pytest` |
 | 结构事实 | `py -3.12 -m extract_oracle inspect <zip>`（需先 `pip install -e .`） |

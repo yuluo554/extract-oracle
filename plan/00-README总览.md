@@ -28,6 +28,8 @@
 | `tools/gen_fixtures.py` | `struct.pack` fixture 生成器（零网络、可重复、逐字节一致） | 🟡 M0（6/22 份）；M1 补全 |
 | `tools/check_sprint_layout.py` | 布局门（方法论装订第②件） | ✅ M0 |
 | `tools/check_desensitized.py` | 脱敏门（发布前必跑，CI 同 job） | ✅ M0 |
+| `tools/check_publish_ready.py` | 发布就绪门（可上传性 P1–P8；**不判是否已发布**） | ✅ M0 |
+| `tools/bootstrap_remote.py` | 建仓 + 首推 + sha 对账 + CI run 回读（默认 dry-run） | ✅ M0 |
 | `tests/` | 契约 / 确定性 / fixture 对账 / 门自身变异验证 | ✅ M0 起 |
 | `docs/rules.md` / `docs/divergence.md` | 规则原句 + 四工具分歧对照 | ⬜ M4/M6 |
 | `README.md` / `LICENSE` / `.gitignore` | 产品页 / MIT / Python 标准模板 | ✅ M0 |
@@ -91,6 +93,7 @@
 | 四工具分歧对照 | 本机实测命令与输出 | `docs/divergence.md` | 每格附实测命令与输出节选 | ⬜ 待 M6 产出 |
 | fixture 生成器 | `struct.pack` 程序化构造 | `tools/gen_fixtures.py` | 重跑逐字节一致；不含真实用户文件 | 🟡 骨架 6/22 份；待 M1 补全 |
 | 方法论装订 | `AGENTS.md` + 布局门 + 脱敏门 + `plan/00` 顶部一行 | `tools/check_sprint_layout.py` / `tools/check_desensitized.py` | 布局门全绿 + 变异逐组变红（`tests/test_layout_gate.py`） | ✅ |
+| **可上传 GitHub** | 仓库结构 + 门 + 建仓脚本 | `tools/check_publish_ready.py`（P1–P8）/ `tools/bootstrap_remote.py` | 发布就绪门全绿（含 `git bundle verify` 推送包自证）+ 11 组变异逐组变红 | ✅（**仓库本身可推**；远端尚未创建，见 `plan/05` U1） |
 
 ---
 

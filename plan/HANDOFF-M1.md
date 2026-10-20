@@ -15,6 +15,7 @@
 | CI 预置 | `.github/workflows/ci.yml`（gate + 3×2 测试矩阵） | **未首推，CI 待验证**（`plan/05` §五 U1） |
 | 产品页 / 许可 | `README.md` / `LICENSE` / `AGENTS.md` | 脱敏门 0 命中 |
 | 冻结态链路 | `scripts/build.py` + `scripts/entry.py` | **M0 实测**：PyInstaller onefile 构建成功，产物 `--version` / `inspect` 通过；入口用 `__main__.py` 会崩（已修，`tests/test_freeze_entry.py` 钉住） |
+| 可上传性 | `tools/check_publish_ready.py`（P1–P8）+ `tools/bootstrap_remote.py` | 发布就绪门全绿（含 `git bundle verify` 推送包自证）；11 组变异逐组变红（`tests/test_publish_ready.py`）。**远端尚未创建**——建仓是显式对外动作 |
 
 **M0 的关键判定（D10）**：判定层未落地时 `check` 返回退出码 **3**（`capability_missing`），
 **不产出空 findings**。这是"最坏的假绿"的防线，M2 起逐模块翻 `capabilities.MODULES[*].implemented`。
@@ -38,6 +39,12 @@
    加的时候必须同时加"部分运行不写全集真值"的测试——这是 skill 里实测过的静默污染形态）。
 8. **门自身也会过期**：`plan/05` §3.1 表里有 5 组（STATUS/HANDOFFS/GAPS/LEDGER/RELEASE）在 M0
    是弱形态或无法构造靶子；M1 落地后**必须按当时仓库形态复跑这 5 组**，别沿用 M0 的"绿"。
+9. **"能不能推"与"发不发布"是两件事**：`check_publish_ready.py` 判前者（P1–P8，每天都该绿），
+   `plan/05` §四 判后者（M6 一次）。**不要因为 M6 没做就把发布就绪门当"不适用"**——它是
+   唯一能拦住"dist/ 被跟踪""藏了个 token""工作树没提交"的常驻断言。
+10. **建仓/推送是显式对外动作**：`tools/bootstrap_remote.py` 默认 dry-run，`--apply` 才写远端，
+   且**没有 `--force`**（发布就绪门不绿就拒绝推）。推送成功的判据 = **远端 sha == 本地 sha**，
+    不是 `git push` 的退出码（实测过"报 fatal 其实已成功"）。
 
 ## 3. 下一棒待办（M1 数据先行，只做数据不写产品逻辑）
 
@@ -114,6 +121,14 @@ LFH/CD 一致"；③ 不得下载任何真实归档。
 py -3.12 tools/check_sprint_layout.py
 py -3.12 tools/check_desensitized.py
 py -3.12 tools/check_sprint_layout.py --selftest
+
+# 发布就绪门（推 GitHub 之前必须绿）
+py -3.12 tools/check_publish_ready.py
+py -3.12 tools/check_publish_ready.py --allow-dirty   # 开发中允许未提交改动
+
+# 建仓 + 首推（默认 dry-run；--apply 才真推）
+py -3.12 tools/bootstrap_remote.py --repo <owner>/<repo>
+py -3.12 tools/bootstrap_remote.py --repo <owner>/<repo> --apply --wait-seconds 90
 
 # fixture
 py -3.12 tools/gen_fixtures.py            # 写盘
