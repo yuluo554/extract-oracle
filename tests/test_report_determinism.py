@@ -5,12 +5,14 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from extract_oracle import __version__
 from extract_oracle.report import SCHEMA_VERSION, dumps_json, render_text, write_atomic
 
 FIXTURE = Path(__file__).resolve().parent.parent / "data" / "fixtures" / "clean.zip"
 
 PAYLOAD = {
-    "tool_version": "0.1.0",
+    # 版本号取自根模块（单一真源；M6 定版时不再手抄第二份）。
+    "tool_version": __version__,
     "schema_version": SCHEMA_VERSION,
     "command": "check",
     "target": "windows",

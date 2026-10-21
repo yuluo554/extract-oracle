@@ -71,6 +71,20 @@ def test_readme_documents_exit_codes():
     assert "绝不静默退化" in text or "不是故障" in text
 
 
+def test_readme_status_line_carries_the_current_version():
+    """版本号"三处一致"的第三处（前两处：`pyproject` 走 `dynamic` 读根模块、产物自报）。
+
+    为什么这条值得单独有：手抄两处时"漏改 `__init__`"是经典事故，而 README 顶部那行是**用户
+    下载后先看到的那一处**（随包文档）。判据取"README 里出现 `v<__version__>`"，与产物自报的
+    `tests/test_artifact_e2e.py::test_artifact_version_is_the_single_source_of_truth` 成对。
+    """
+
+    from extract_oracle import __version__
+
+    text = README.read_text(encoding="utf-8")
+    assert f"v{__version__}" in text, f"README 状态行未跟上根模块版本 v{__version__}"
+
+
 def test_section_references_point_at_existing_sections():
     """代码/文档里的 `data/README.md` §N.M 引用必须有实物（防悬空口径引用）。
 

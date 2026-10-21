@@ -477,7 +477,30 @@ COMMANDS = {
 }
 
 
+def _force_lf_stdout() -> None:
+    """让 stdout 的换行恒为 LF（`data/README.md` §4.8 的冻结契约，K09）。
+
+    实测（M6 交付态冒烟，产物 `dist/extract-oracle.exe`）：Windows 上 `sys.stdout` 是
+    `newline=None` 的 `TextIOWrapper`，写 `\\n` 会被翻成 `\\r\\n`；于是
+    `extract-oracle check x --format json > a.json` 与 `--out a.json`（走 `write_atomic`，
+    `newline="\\n"`）给出**不同字节**——同一个归档的**默认输出路径**违反了自己的换行口径，
+    也让"同输入 → 同一输出"在跨机上不成立（靶子 `tests/test_artifact_e2e.py`）。
+
+    这里只改**换行翻译**，不动编码：非 UTF-8 控制台上中文表标签仍按控制台编码显示。
+    没有 `reconfigure` 的替代 stdout（如被测试框架接管的流）保持原样。
+    """
+
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is None:
+        return
+    try:
+        reconfigure(newline="\n")
+    except (ValueError, OSError):  # 已分离/只读的流：不接管，宁可保持平台默认也不崩
+        pass
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    _force_lf_stdout()
     parser = build_parser()
     try:
         args = parser.parse_args(argv)

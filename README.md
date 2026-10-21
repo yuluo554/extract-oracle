@@ -1,6 +1,6 @@
 # extract-oracle · 归档提取预言机
 
-> **Status: v0.1.0 — M5 容器与编码（五模块全部落地：`structure.*` 六条 + `collision.*` 四条 + `accessibility` 三级 + `encoding.*` 推断 + `container.*` 五条 + `budget.*` 两条）**｜方法论：`ai-tool-project-sprint`｜布局门：`py -3.12 tools/check_sprint_layout.py`
+> **Status: v1.0.0 — M6 发布（五模块全部落地：`structure.*` 六条 + `collision.*` 四条 + `accessibility` 三级 + `encoding.*` 推断 + `container.*` 五条 + `budget.*` 两条）**｜方法论：`ai-tool-project-sprint`｜布局门：`py -3.12 tools/check_sprint_layout.py`
 
 **现有工具只做"单条规则检查"或"字段转储"，没有一个输出"谁会写出什么名字、谁覆盖谁、哪个工具会拒绝"。**
 
@@ -168,7 +168,12 @@ extract-oracle check data/fixtures/long_comp.zip --target windows,linux --module
 - **macOS / Linux 落盘行为未实测**（本机只有 Windows）：这些判定输出标 `table_simulated` / `medium`，不是 `measured`。
 - **APFS 归一化依据为中硬**：来自逆向文档与实操观察，**非 Apple 官方规范**，输出标 `evidence_strength: medium`。
 - **不做**：解压、zip slip / zip bomb / 恶意检测、安全打分、"该用哪个工具"的建议、GUI/Web 界面。
-- **单文件可执行**在 M6 产出；PyInstaller 产物含构建期时间戳，**不承诺跨机构建逐字节一致**。
+- **单文件可执行**：`dist/extract-oracle.exe`（PyInstaller onefile，M6 产出）。**平台语义表随包分发**
+  ——在仓库外的中立目录里 `--version` / `capabilities` / `inspect` / `check` 四条命令都可直接跑
+  （`platforms --verify` 也退 0），不需要仓库里的 `data/`。PyInstaller 产物含构建期时间戳，
+  **不承诺跨机构建逐字节一致**（`plan/05` §五 U5）。
+- **stdout 与 `--out` 的字节一致**：两者的换行都是 `\n`（M6 修：Windows 上 `sys.stdout` 默认会把
+  `\n` 翻成 `\r\n`，会让 `check x --format json > a.json` 与 `--out a.json` 给出不同字节）。
 
 ## 仓库结构
 
@@ -177,9 +182,9 @@ src/extract_oracle/   解析（zip_reader）/ 判定（rules/）/ 平台表访�
 tools/                gen_fixtures.py（程序化 fixture）+ 布局门 + 脱敏门
 tests/                契约 / 确定性 / fixture 对账 / 判定验收 / 三工具行为 / 门自身变异
 data/                 依据台账（README.md）+ fixtures + truth + tool-matrix（四工具实测）+ platforms（$UpCase 表）
-docs/                 rules.md（规范原句台账，M4 定稿）/ divergence.md（四工具实测，M6）
+docs/                 rules.md（规范原句台账，M4 定稿）/ divergence.md（四工具实测 22×4 格，M6 定稿）
 plan/                 00–06 计划套件 + HANDOFF + RELEASE
-scripts/              build.py（PyInstaller onefile）
+scripts/              build.py（PyInstaller onefile）/ entry.py（冻结态入口）
 ```
 
 ## 开发
@@ -190,6 +195,13 @@ py -3.12 tools/check_desensitized.py      # 脱敏门（发布前必跑，CI 同
 py -3.12 tools/check_publish_ready.py     # 发布就绪门：这个仓库现在能不能推上 GitHub
 py -3.12 tools/gen_fixtures.py --check    # fixture 重生成逐字节一致
 py -3.12 -m pytest
+```
+
+造单文件可执行（需要 `[build]` 额外依赖）：
+
+```bash
+py -3.12 -m pip install -e ".[build]"
+py -3.12 scripts/build.py                 # → dist/extract-oracle.exe（含平台表随包分发自检）
 ```
 
 要建仓并首推（**默认 dry-run**，加 `--apply` 才真推）：

@@ -6,9 +6,9 @@
 - 交付形态（唯一）：**单文件可执行 + 纯本地 CLI**（只读归档、零网络、零解压到磁盘、零运行时依赖）
 - 定位宣言："现有工具只做**单条规则检查**或**字段转储**，没有一个输出**谁会写出什么名字、谁覆盖谁、哪个工具会拒绝**。本工具是**提取结果预言机**：输入一个 ZIP/TAR，逐条目预言它在 {Windows 资源管理器, Info-ZIP unzip, 7-Zip, libarchive, Python zipfile, macOS Finder, Linux} 上会变成什么名字、是否被覆盖、是否应用层不可见、是否被拒绝。**提取预言机不是体检器。**"
 - 基准日：**2026-10-21**；代理实际检索窗口 **2026-10-19T18:35Z–19:10Z**（`data/README.md` §1 已原样记录）
-- 当前状态：**M5 容器与编码完成**（`rules/encoding.py` 推断 + `0x7075` 全量、`rules/container.py` 五条、`rules/budget.py` 两条；**五模块全部翻 True**，不带 `--module` 的 `check` 现在出完整报告；`docs/rules.md` 加 §八）；下一棒 = **M6 发布**（见 `plan/HANDOFF-M6.md`）
-- **可上传状态**：发布就绪门（`py -3.12 tools/check_publish_ready.py`）8 条判据全绿，含 `git bundle verify` 推送包自证 → **仓库本身现在就能推**；**远端尚未创建**（建仓是显式对外动作，命令见 `plan/05` §四 第 0 步）
-- CI 状态：**未接远端，CI 待首推验证**（`plan/05` §五 U1）
+- 当前状态：**M6 发布**（`docs/divergence.md` 定稿：22 份 fixture × 4 工具 = 88 格逐格命令与输出节选；`__version__` 定版 **1.0.0**；`dist/extract-oracle.exe` 出产物并**自带平台表**，仓库外中立目录四条命令实跑通过；`plan/RELEASE-M6.md` **在 tag 之前落盘**）
+- **可上传状态**：发布就绪门（`py -3.12 tools/check_publish_ready.py`）8 条判据全绿，含 `git bundle verify` 推送包自证 → **仓库本身现在就能推**；对外动作序列（建仓 → 首推 → tag → Release）见 `plan/05` §四，**已获用户显式确认后执行**
+- CI 状态：见下文（首推前 = `plan/05` §五 U1 的"待首推"口径；首推后 = §五 U1 回填的真实 run 台账）
 
 ---
 
@@ -35,12 +35,12 @@
 | `tools/bootstrap_remote.py` | 建仓 + 首推 + sha 对账 + CI run 回读（默认 dry-run） | ✅ M0 |
 | `tests/` | 契约 / 确定性 / fixture 对账 / 门自身变异验证 / M1 数据产物 / 判定验收 | ✅ M0 起；M1 加 `test_m1_data.py`；M2 加六份判定与矩阵断言；M3 加 `test_fold.py` |
 | `docs/rules.md` | 规则原句台账（15 行 × URL × 原句 + 逐规则反查表） | ✅ M4 定稿（5 行原句回填 + 两处出处更正 + 新增 POSIX 行） |
-| `docs/divergence.md` | 四工具分歧对照定稿（中间产物在 `data/tool-matrix/`） | ⬜ M6 |
+| `docs/divergence.md` | 四工具分歧对照定稿（22×4 格逐格命令 + 输出节选，三者按 `plan/01` §1.2 的三处阵地组织） | ✅ M6 |
 | `data/platforms/` | NTFS `$UpCase` 表 + 平台元数据 | ✅ M1 |
 | `README.md` / `LICENSE` / `.gitignore` | 产品页 / MIT / Python 标准模板 | ✅ M0 |
 | `scripts/build.py` | PyInstaller onefile 构建（版本自报断言） | 🟡 M0 脚本位；产物 M6 |
 | `scripts/entry.py` | 冻结态入口（**绝对导入**薄壳；PyInstaller 把入口当顶层脚本，相对导入必崩） | ✅ M0 |
-| `plan/RELEASE-M6.md` | 发布留档（tag 时点 / tag 后追加 两栏） | ⬜ M6 |
+| `plan/RELEASE-M6.md` | 发布留档（`§一 tag 前事实` / `§二 tag 后追加事实` 两栏 + `§三 阶段 7 出口门覆盖对账`） | 🟡 M6（**tag 前**已落盘；§二 是占位骨架，字面值在 tag 之后登记） |
 
 > 索引状态只在本表维护；`plan/01` 与 `data/README.md` 不重复登记状态。
 
@@ -131,7 +131,7 @@
 | 承诺项（`plan/01` §3） | 应存在的文件路径 | 由哪个里程碑产出 | 用哪条命令核对 |
 |---|---|---|---|
 | CLI 与源码 | `src/extract_oracle/`、`scripts/build.py` | M2 起 | `git ls-files src scripts` |
-| 单文件可执行 | `dist/extract-oracle.exe` | M6（构建自 M2） | `ls dist/` + `tests/artifact_e2e_test.py` |
+| 单文件可执行 | `dist/extract-oracle.exe` | M6（构建自 M2） | `ls dist/` + `tests/test_artifact_e2e.py` |
 | fixture 生成器 | `tools/gen_fixtures.py` | M1 | `git ls-files tools/gen_fixtures.py` + `python tools/gen_fixtures.py --check` |
 | 规则文档 | `docs/rules.md` | M4 | `git ls-files docs/rules.md` |
 | 分歧对照 | `docs/divergence.md` | M6 | `git ls-files docs/divergence.md` |
@@ -152,7 +152,7 @@
 | **M3 折叠** | MOD-3：平台表接入 + `collision.*` 四条 + 写序→存活者 | `case.zip` 存活者正确；`norm.zip` 分平台结论正确；8 组字符对回归全通过 | ✅ |
 | **M4 可访问性** | MOD-4 三级分级 + `docs/rules.md` | `CON.txt`→`WRITTEN_UNREADABLE` 附三证据；`trailing.`→`WRITTEN_TRUNCATED`；保留名边界全绿；每条规则可回原句 | ✅ |
 | **M5 容器与编码** | MOD-5 容器/预算 + MOD-2 收尾（编码推断与 0x7075 全量）+ 确定性导出 | 四 mimetype fixture 各命中一 code；`zh_gbk.zip`/`upath.zip` 预测与实测一致；双跑 byte 级一致 | ✅ |
-| **M6 发布** | GitHub 公开仓库发布 | **① `git tag v0.1.0`；② GitHub Release 附产物**（`dist/extract-oracle.exe` + 确定性源码包，本地留副本并记 sha256）；**③ 发布留档 `plan/RELEASE-M6.md` 在 tag 之前落盘**（分"tag 时点事实 / tag 后追加事实"两栏）；④ `docs/divergence.md` 定稿；⑤ 干净 clone + 干净环境直跑通过 | ⬜ |
+| **M6 发布** | GitHub 公开仓库发布 | **① `git tag v1.0.0`（annotated）；② GitHub Release 附产物**（`dist/extract-oracle.exe` + `git archive` 出的确定性源码包，本地留副本并记 sha256）；**③ 发布留档 `plan/RELEASE-M6.md` 在 tag 之前落盘**（分"tag 时点事实 / tag 后追加事实"两栏，§三 = 阶段 7 出口门覆盖对账）；④ `docs/divergence.md` 定稿（22×4 格逐格命令 + 输出节选）；⑤ 干净 clone + 干净环境直跑通过；⑥ 单文件可执行**自带平台语义表**（中立目录 `platforms --verify` 退 0） | ⬜ |
 
 > DoD 口径写死为 **A) Release 附产物**（≥1 个手工上传附件，本地留副本 + sha256）。里程碑表的 DoD 列**只能加不能减**；任何裁剪必须在 §二 决策记录留一行理由。
 
@@ -227,3 +227,31 @@ LFH/CD 一致"**（规范没有，只引实现选择）；**③ 不得下载任�
 `cafe茅.txt`）。APPNOTE 只规定"历史 CP437"与"bit 11 置位则 MUST UTF-8"，**没有**规定实现该用哪个码页。
 
 发布类里程碑（M6）DoD 三件套不裁剪：**tag + Release 附产物（本地留副本 + sha256）+ `plan/RELEASE-M6.md` 留档（tag 之前落盘，两栏）**。
+
+**M6（发布）交付五样**：
+
+1. **`docs/divergence.md` 定稿**（`plan/00` §四 招牌动词表最后一项的兑现物）：以 `data/tool-matrix/` 的
+   **22 份 fixture × 4 工具 = 88 格**为原料，按 `plan/01` §1.2 的三处阵地组织（双头差分与重叠 /
+   编码推断 + `0x7075` / 真实折叠表），**每格附实测命令 + 退出码 + 实际落盘名 + 输出节选**，
+   并在 §三.4 写下 M5 的**两处实测收窄**（`7z` 不探测字符集、`unzip` 与 bit 11 无关）——
+   旧表述"`7z` → 多编码猜测"不再出现。
+2. **版本定版 `1.0.0`**（`src/extract_oracle/__init__.py`，单一真源；`pyproject` 走 `dynamic`）：
+   `gen_fixtures.py --check` 重跑仍 22/22 逐字节一致（fixture 不含版本串，核对过）；
+   `tests/test_report_determinism.py` 的 `tool_version` 改读根模块，不再手抄第二份。
+3. **单文件可执行 + 平台表随包分发**：`dist/extract-oracle.exe`（PyInstaller onefile，入口仍是
+   `scripts/entry.py`）+ 仓库外中立目录四条命令实跑（`--version` / `capabilities` / `inspect` / `check`）。
+   **实测补上一条缺陷**：产物原本**不带** `data/platforms/`，在仓库根跑会因
+   `Path.cwd()/data/platforms` 兜底而"假装"通过，换到中立目录立刻退 3 → 已改成 `--add-data`
+   打进产物，并把这条写进 `scripts/build.py` 的第二条产物自检（中立目录 `platforms --verify` 退 0）。
+4. **`tests/test_artifact_e2e.py`**（`plan/00` §四 点名的断言面）：10 条交付态断言，跑的是**产物**
+   而不是库函数；产物不在时默认 skip 但**skip 是响的**，`ORACLE_REQUIRE_ARTIFACT=1` 时缺失即失败
+   （同 `ORACLE_REQUIRE_TOOLS=1` 的纪律）。它当场抓出第二条缺陷：**stdout 在 Windows 上是 CRLF**，
+   于是 `check x --format json > a.json` 与 `--out a.json` 给出不同字节 → `cli._force_lf_stdout()`
+   把换行口径统一成 LF（只改换行翻译，不动编码）。
+5. **`plan/RELEASE-M6.md`**（tag 前落盘）：`§一 tag 前事实` / `§二 tag 后追加事实`（tag 树内是
+   **占位骨架**——自指约束：本文件就在 tag 树里，写进去的 OID / sha256 立刻失效）/ `§三 阶段 7 出口门
+   覆盖对账`（逐条 实现 / 不适用 + 理由 / 待首推）。
+
+**M6 的两条实测收窄/修正**（写进 `plan/05` §五 U22/U23 与 `plan/RELEASE-M6.md` §一）：
+产物不带平台表（P-bundle）、stdout 换行随平台（LF 口径只覆盖 `--out` 写盘路径）。两条都**先被断言抓住、
+再修、再回归**，不是"文档如实记录缺陷了事"。

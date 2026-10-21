@@ -276,12 +276,21 @@ def test_m8_remove_tag_after_marker_is_red(sandbox: Path):
 
 
 def test_m10_done_without_release_doc_is_red(sandbox: Path):
-    """'发布里程碑未完成即跳过' 分支的反向：✅ 之后必须先有留档。"""
+    """'发布里程碑未完成即跳过' 分支的反向：✅ 之后必须先有留档。
+
+    **缺件态必须显式构造**（M6 实测踩到的"瞬态断言"）：本测试原先靠"仓库里**没有** `RELEASE-M6.md`"
+    来表达缺档——沙箱拷的是真实仓库文件，于是留档一落盘，这条测试就自己变红（它测的是"任务还没做"，
+    不是门的模式语义）。正解 = 在沙箱里**显式删掉**留档来构造缺档态，与项目进度解耦。
+    判别 = "我这条测试，会不会因为'我把该做的事做完了'而变红？"——会，就说明测的是瞬态而非语义。
+    """
 
     _mark_release_done(sandbox)
+    doc = sandbox / "plan" / "RELEASE-M6.md"
+    assert doc.is_file(), "沙箱里应当先有一份留档，本变异才有可删的对象（缺件态自证）"
+    doc.unlink()
     code, out = _run_gate(sandbox)
     assert code == 1
-    assert "LAYOUT.RELEASE" in _fails(out)
+    assert "LAYOUT.RELEASE" in _fails(out), out
 
 
 def test_release_not_applicable_before_milestone_done(sandbox: Path):
