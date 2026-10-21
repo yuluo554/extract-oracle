@@ -692,11 +692,11 @@ def write_all(out_dir: Path) -> None:
     truth_dir.mkdir(parents=True, exist_ok=True)
     for name, data in generate().items():
         (out_dir / name).write_bytes(data)
-        (truth_dir / f"{name}.json").write_text(
-            json.dumps(_truth_payload(name), ensure_ascii=False, sort_keys=True, indent=2) + "\n",
-            encoding="utf-8",
-            newline="\n",
-        )
+        truth_text = json.dumps(_truth_payload(name), ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+        # 显式 LF 写盘、**Python 3.9 兼容**：`write_text(newline=…)` 是 3.10 才加的签名
+        # （`tests/test_py39_compat.py` 守着这一类；K05 的逐字节一致依赖这里的 LF）。
+        with open(truth_dir / f"{name}.json", "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(truth_text)
 
 
 def check(out_dir: Path) -> int:

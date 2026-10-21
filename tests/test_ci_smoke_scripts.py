@@ -224,7 +224,8 @@ def test_find_bash_rejects_the_wsl_launcher(monkeypatch, tmp_path):
     """
 
     fake_wsl = tmp_path / ("bash.exe" if os.name == "nt" else "bash")
-    fake_wsl.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8", newline="\n")
+    with open(fake_wsl, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write("#!/bin/sh\nexit 0\n")
     fake_wsl.chmod(0o755)
     # 用 `ORACLE_BASH` 提供一个**已知可用**的真 bash 作对照：断言的是
     # "拒收假 bash + 仍能取到真 bash"，而不是"这台机器恰好把 Git 装在固定位置"。

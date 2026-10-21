@@ -296,7 +296,9 @@ def main(argv: list[str] | None = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "ntfs-upcase.bin").write_bytes(table)
     text = json.dumps(meta, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
-    (out_dir / "meta.json").write_text(text, encoding="utf-8", newline="\n")
+    # 显式 LF 写盘、**Python 3.9 兼容**（`write_text(newline=…)` 是 3.10 才加的签名）。
+    with open(out_dir / "meta.json", "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
 
     print(f"OK  表 {len(table)} 字节（{TABLE_CODEPOINTS} 项）→ {out_dir / 'ntfs-upcase.bin'}")
     print(f"    source={source} sha256={meta['ntfs_upcase']['sha256'][:16]}… 校验对 {len(records)} 组全一致")
