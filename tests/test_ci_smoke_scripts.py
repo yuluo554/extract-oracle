@@ -122,6 +122,49 @@ def test_smoke_step_does_not_pipe_into_grep(name: str, script: str) -> None:
     )
 
 
+def _is_real_bash(path: str) -> bool:
+    """这个 `bash` 是真 bash 吗？（`$BASH_VERSION` 非空即真）
+
+    为什么必须验：Windows 上 `C:\\Windows\\System32\\bash.exe` 是 **WSL 的启动器**，不是 bash
+    ——`shutil.which("bash")` 会按 PATH 顺序先命中它，然后每条命令都变成
+    "Windows Subsystem for Linux has no installed distributions"（CI 实测的 rc=1）。
+    判据落"它能报出自己的 `$BASH_VERSION`"，不落路径猜测。
+    """
+
+    try:
+        proc = subprocess.run(
+            [path, "--noprofile", "--norc", "-c", "printf %s \"$BASH_VERSION\""],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return proc.returncode == 0 and proc.stdout.strip()[:1].isdigit()
+
+
+def _find_bash() -> str | None:
+    """按序找一个**真的** bash：PATH 上的 → 环境变量 → Git for Windows 的固定位置。
+
+    `C:\\Program Files\\Git\\bin\\bash.exe` 与 `…\\usr\\bin\\bash.exe` 是 GitHub `windows-latest`
+    上 Git Bash 的固定位置（该 runner 的 `shell: bash` 用的就是它）；本机 Git 装在别处时用
+    `ORACLE_BASH` 指定（与 `PROBE_7Z`/`PROBE_UNZIP` 同一族的显式覆盖）。
+    """
+
+    candidates = [os.environ.get("ORACLE_BASH"), shutil.which("bash")]
+    if os.name == "nt":
+        candidates += [
+            r"C:\Program Files\Git\bin\bash.exe",
+            r"C:\Program Files\Git\usr\bin\bash.exe",
+        ]
+    for candidate in candidates:
+        if candidate and Path(candidate).is_file() and _is_real_bash(candidate):
+            return candidate
+    return None
+
+
 def _bash_preamble() -> str:
     """把 `extract-oracle` 定义成 **bash 函数**（等价于 console script，但不依赖 PATH 与 shebang）。
 
@@ -145,8 +188,9 @@ def test_smoke_step_runs_under_github_bash_flags(name: str, script: str, tmp_pat
     暴露出来的两个开关；用默认形态跑会得出"全绿"的假结论。
     """
 
-    if shutil.which("bash") is None:
-        pytest.skip("本机没有 bash（Windows 裸环境）；CI 的三个平台都有")
+    bash = _find_bash()
+    if bash is None:
+        pytest.skip("本机没有**真的** bash（Windows 上 System32\\bash.exe 是 WSL 启动器，不算）")
 
     env = {
         **os.environ,
@@ -155,7 +199,7 @@ def test_smoke_step_runs_under_github_bash_flags(name: str, script: str, tmp_pat
         "PYTHONPATH": str(REPO / "src"),
     }
     proc = subprocess.run(
-        ["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", _bash_preamble() + script],
+        [bash, "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", _bash_preamble() + script],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -169,3 +213,37 @@ def test_smoke_step_runs_under_github_bash_flags(name: str, script: str, tmp_pat
         f"{proc.stdout[-1500:]}\n{proc.stderr[-1500:]}"
     )
     assert "smoke OK" in proc.stdout or name.endswith("Console script smoke"), proc.stdout[-800:]
+
+def test_find_bash_rejects_the_wsl_launcher(monkeypatch, tmp_path):
+    """`_find_bash` 必须**拒收** Windows 的 WSL 启动器（CI 实测：它就是那条 rc=1 的成因）。
+
+    判据不落"路径里有没有 System32"这种猜测，而是**问它要 `$BASH_VERSION`**：
+    WSL 启动器报不出来（且它会说 "no installed distributions"）。
+    这里用一个**故意不是 bash 的可执行文件**扮演它（`cmd /c exit 0` 类：能跑、但不认 `-c` 语义），
+    并断言 `_find_bash()` 会跳过它去取一个真 bash（本机/GitHub runner 上都有）。
+    """
+
+    fake_wsl = tmp_path / ("bash.exe" if os.name == "nt" else "bash")
+    fake_wsl.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8", newline="\n")
+    fake_wsl.chmod(0o755)
+    # 用 `ORACLE_BASH` 提供一个**已知可用**的真 bash 作对照：断言的是
+    # "拒收假 bash + 仍能取到真 bash"，而不是"这台机器恰好把 Git 装在固定位置"。
+    known = _find_bash()
+    if known is None:
+        pytest.skip("本机没有真 bash（无法构造'拒收之后仍能取到'的对照）")
+    monkeypatch.setenv("ORACLE_BASH", known)
+    monkeypatch.setattr(shutil, "which", lambda name: str(fake_wsl) if name == "bash" else None)
+
+    assert _is_real_bash(str(fake_wsl)) is False, "假 bash 不该被判成真 bash"
+    found = _find_bash()
+    assert found is not None, "拒收假 bash 之后必须仍能取到 ORACLE_BASH 指定的真 bash"
+    assert Path(found).resolve() != fake_wsl.resolve(), "拒收假 bash 后仍取到了它"
+
+
+def test_find_bash_reports_the_real_one_on_this_host():
+    """正向对照：本机（或 runner）上能找到真 bash 时，它必须能报出 `$BASH_VERSION`。"""
+
+    found = _find_bash()
+    if found is None:
+        pytest.skip("本机没有真 bash")
+    assert _is_real_bash(found)
