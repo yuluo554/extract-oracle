@@ -173,7 +173,7 @@
 | "能力缺失"的降级冒烟不许用 PATH 隔离伪造缺失 | 实现 | 本项目**不用 PATH 隔离**：`tests/test_cli_contract.py` 用**注入式**变异（把 `capabilities.MODULES` 与 `cli.MODULES` 一起翻回 False）证明"缺模块 → 退 3 且不产空 findings"；工具缺失侧用显式开关 `ORACLE_REQUIRE_TOOLS=1`（缺失即失败，不 skip 成假绿） |
 | tag push 与 branch push 各一条 run（同 sha 两条合法，tag run 也必须绿） | 实现 | 同一 sha `806d074af154` 上两条 run：`branch=main run=39526198978 success` + `branch=v1.0.0 run=39526542472 success` —— **两条都绿**；台账与终止符在 `§二` |
 | CI 检出形态会让"标注 tag 对象"整类不存在 | 实现 | **不把这类推到 CI**：tag 对象（tagger 邮箱属脱敏"提交元数据面"）在**本地**对账，结果写进 `§二`——这正是本条给的出路（"或在留档里如实写'本地验的'"） |
-| 推送前先在本地 `yaml.safe_load` 解析 workflow 并断言 job/step 数 | 实现 | `yaml.safe_load` 实跑：**3 job / 5 + 14 + 5 steps**（`gate` / `test` / `single-file-artifact`），step `name` 无裸 `: `（那会让 GitHub 不建 job） |
+| 推送前先在本地解析 workflow 并断言 job/step 数 | 实现 | **3 job / 5 + 14 + 5 steps**（`gate` / `test` / `artifact`）。落地形态 = `tests/test_ci_smoke_scripts.py::test_workflow_has_the_expected_jobs_and_step_counts`，**只用标准库**按缩进做最小解析（`PyYAML` 不是本项目的依赖——CI 首跑实测：`import yaml` 让该测试模块在**收集期**就 `ModuleNotFoundError`，把整个 job 拖红）。另用 GitHub 的 `bash -e -o pipefail` **实跑**六个冒烟步（见 `plan/05` §5.3） |
 
 ### E. 门自身的纪律
 
