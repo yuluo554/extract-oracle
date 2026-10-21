@@ -27,14 +27,16 @@ class Capability:
 #: - M4 翻 `accessibility`（验收在 `tests/test_accessibility.py`：`reserved.zip` 的 `CON.txt`/`NUL.txt`
 #:   → `WRITTEN_UNREADABLE` 且三证据齐、`aux.tar.gz` → `OK`；`trailing.zip` 三条 → `WRITTEN_TRUNCATED`；
 #:   `trim.zip` 两条 + 仍触发 `collision.TRIM`；`long_comp.zip` → `BLOCKED`；`clean.zip` 三平台全 `OK`）。
-#: `encoding` 保持 False——M2 只做了骨架（原始字节 / bit11 / extra 解析），
-#: `encoding.candidates[]` 与 `predictedNames` 在 M5，**骨架不冒充模块落地**。
+#: - M5 翻 `encoding`（验收在 `tests/test_encoding.py`：候选顺序 K02 + `high/medium/low` 三档
+#:   + `0x7075` 两种 CRC 结局 + `predictedNames` 与 `data/tool-matrix/` 四工具实测一致）
+#:   与 `container`（验收在 `tests/test_container.py` + `tests/test_budget.py`：四 mimetype fixture
+#:   各命中一 code 且**互不串报**、两个预算 fixture 各命中一条、`clean.zip` 零误报）。
 MODULES: tuple[Capability, ...] = (
     Capability("structure", "M2", "structure.*", implemented=True),
-    Capability("encoding", "M2/M5", "encoding.*"),
+    Capability("encoding", "M2/M5", "encoding.*", implemented=True),
     Capability("fold", "M3", "collision.*", implemented=True),
     Capability("accessibility", "M4", "accessibility", implemented=True),
-    Capability("container", "M5", "container.* / budget.*"),
+    Capability("container", "M5", "container.* / budget.*", implemented=True),
 )
 
 #: `check` 产出完整报告所需的最小能力集合（顺序即报告中的固定顺序）。

@@ -114,20 +114,29 @@ def test_extra_ids_are_carried_through_for_record_only_fields():
     assert 0xCAFE in mimetype.extra_ids
 
 
-# ---------------------------------------------------------------- 骨架 ≠ 落地
+# ---------------------------------------------------------------- 骨架 → 落地（M5 翻转）
 
 
-def test_encoding_module_still_pending_in_m2():
-    """K08：`implemented` 是 `check` 的唯一门。骨架级输出不得把 encoding 翻 True。"""
+def test_encoding_module_is_implemented_since_m5():
+    """K08：`implemented` 是 `check` 的唯一门。M5 起翻 True，验收靶子 = `tests/test_encoding.py`。
+
+    M2 时期本文件断言它**仍是 False**（"骨架不冒充模块落地"）。M5 收尾把这条翻成正向断言：
+    模块已落地，**且** `check()` 真的存在——两条一起断，防"只改 flag 不写实现"。
+    """
 
     module = next(item for item in MODULES if item.name == "encoding")
-    assert module.implemented is False
-    assert not hasattr(encoding, "check"), "encoding 在 M2 不得提供 check()（推断在 M5）"
+    assert module.implemented is True
+    assert callable(getattr(encoding, "check", None)), "encoding 落地后必须提供 check()"
 
 
-def test_candidate_order_is_registered_but_not_used():
-    """候选顺序登记在 `data/README.md` §4.4；M2 只登记，不做推断。"""
+def test_candidate_order_is_registered_and_used():
+    """候选顺序登记在 `data/README.md` §4.4（K02）；M5 起它真的决定候选与胜出顺序。"""
 
     assert encoding.CANDIDATE_ENCODINGS == ("UTF-8", "CP437", "GBK", "CP932", "CP949", "CP1251")
     facts = _names("zh_gbk.zip")[0]
-    assert not hasattr(facts, "candidates"), "骨架期不得产出候选列表"
+    # 结构事实面（`describe`）仍不产出推断字段——推断只在 `check()` 的返回块里
+    assert not hasattr(facts, "candidates"), "describe() 只给结构事实，候选列表在 check() 的块里"
+    # 推断面：候选按 K02 顺序
+    block = encoding.check(read_archive(FIXTURES / "zh_gbk.zip"))[1]
+    order = [item["encoding"] for item in block[0]["candidates"]]
+    assert order == [name for name in encoding.CANDIDATE_ENCODINGS if name in order]

@@ -1,6 +1,6 @@
 # extract-oracle · 归档提取预言机
 
-> **Status: v0.1.0 — M4 可访问性（`structure.*` 六条 + `collision.*` 四条 + `accessibility` 三级可用，其余模块待 M5）**｜方法论：`ai-tool-project-sprint`｜布局门：`py -3.12 tools/check_sprint_layout.py`
+> **Status: v0.1.0 — M5 容器与编码（五模块全部落地：`structure.*` 六条 + `collision.*` 四条 + `accessibility` 三级 + `encoding.*` 推断 + `container.*` 五条 + `budget.*` 两条）**｜方法论：`ai-tool-project-sprint`｜布局门：`py -3.12 tools/check_sprint_layout.py`
 
 **现有工具只做"单条规则检查"或"字段转储"，没有一个输出"谁会写出什么名字、谁覆盖谁、哪个工具会拒绝"。**
 
@@ -33,7 +33,7 @@
 | M2 | ✅ | 三层解析 + MOD-1 双头差分与重叠（六条规则） + MOD-2 骨架 |
 | M3 | ✅ | 平台表接入 + MOD-3 跨平台折叠（四条规则、写序→存活者） |
 | M4 | ✅ | MOD-4 三级可访问性 + `docs/rules.md` 定稿（5 行原句回填 + 反查表到逐规则） |
-| M5 | ⬜ | MOD-5 容器与预算 + MOD-2 收尾 |
+| M5 | ✅ | MOD-5 容器与预算 + MOD-2 收尾（编码推断 + `0x7075` + 确定性导出） |
 | M6 | ⬜ | 发布（tag + Release 附产物） |
 
 > 状态副本共 4 处（本表 / `plan/00` 里程碑表 / `plan/00` 承诺-证据台账 / `plan/05` 状态表），任一处单独改动
@@ -56,14 +56,16 @@ extract-oracle inspect some.zip
 # 能力状态：五个模块各自落地了没
 extract-oracle capabilities
 
-# 判定入口（M4 起 `structure`/`fold`/`accessibility` 可用；判定层未就绪时退出码 3，绝不产出空 findings）
+# 判定入口（五模块全部落地；有问题退 1，零问题退 0，能力/输入问题退 2/3）
 extract-oracle check some.zip --target windows
 extract-oracle check some.zip --target windows,macos --format json
 
-# 只跑已落地的模块（报告里 modules 字段写明本次范围；点名未落地的模块照样退 3）
+# 只跑点名模块（报告里 modules 字段写明本次范围）
 extract-oracle check some.zip --target windows --module structure
 extract-oracle check some.zip --target windows,macos --module fold
 extract-oracle check some.zip --target windows --module accessibility
+extract-oracle check some.zip --target windows --module encoding
+extract-oracle check some.zip --target windows --module container
 ```
 
 **M2 起可用的判定**：`structure.*` 六条（`NAME_DIVERGES` / `CRC_DIVERGES` / `SIZE_DIVERGES` /
@@ -105,6 +107,34 @@ extract-oracle check data/fixtures/trailing.zip --target windows --module access
 分级口径（含 `COM0`/`LPT0` 也是保留名、上标 ¹²³ 变体**不是**、保留名按裁剪后组件匹配等
 本机实测收窄）唯一表述在 `data/README.md` §4.2，输出形状在 §4.11。
 
+**M5 起可用的判定**：`encoding[]`（每条目：候选编码按固定顺序、置信度 `high`/`medium`/`low`、
+**四个提取器各自的落盘名预测**）+ `container`（容器识别）+ `container.*` 五条 + `budget.*` 两条。
+两条值得单独看：
+
+- **`0x7075` 的 CRC 校验**：通过 → 覆盖生效（`upath.zip` 四工具一致 `café.txt`）；
+  失配 → 覆盖失效 + 降级 `low` + `encoding.UPATH_CRC_MISMATCH`，四方分歧
+  （`unzip` 出 `Íð+-+¹.txt`、Python 出 `╓╨╬─├√.txt`、7-Zip 与 libarchive 出 `中文名.txt`）。
+- **`budget.PATH_OVER_260` 是预算告警，不是"本机截断"**：本机 `LongPathsEnabled=1` 时 314 字节的
+  路径可直接创建（`plan/05` §五 U12）——所以它说"未开启长路径支持时不可移植"，
+  `evidence.kind` 显式标 `portability_budget`；组件超限那条才是平台硬限。
+
+```bash
+# 0x7075 CRC 有效 → 四工具一致 café.txt（退 0）；失配 → 唯一一条 finding + 降级 low（退 1）
+extract-oracle check data/fixtures/upath.zip --target windows --module encoding
+extract-oracle check data/fixtures/upath_badcrc.zip --target windows --module encoding
+
+# 四 mimetype 样本各命中一条：NOT_FIRST / COMPRESSED / EXTRA / PADDING
+extract-oracle check data/fixtures/padding.epub --target windows --module container
+extract-oracle check data/fixtures/long_comp.zip --target windows,linux --module container
+```
+
+**四提取器的落盘名模型是按本机实测写的**（不是"应该和谁一致"推的）：`python` 读 0x7075 → bit 11 →
+回退 CP437；`unzip` 走 CP850 解码 + OEM→ANSI best-fit（128 个高位字节逐字节实测，33 码点替换表）；
+`7zip`/`libarchive` 按**宿主 ANSI 码页**解释且**不做字符集探测**（有效的 UTF-8 字节照样被解成乱码）。
+`predictedNames` 只预言**解码层**——7-Zip 的 `_` 前缀、冒号截断、尾随裁剪分别归
+`accessibility` / `collision`。口径唯一表述在 `data/README.md` §4.4 / §4.12 / §4.13，
+依据核对在 `docs/rules.md` §八。
+
 ## 退出码
 
 | 码 | 语义 |
@@ -119,9 +149,9 @@ extract-oracle check data/fixtures/trailing.zip --target windows --module access
 
 ## 已知限制（诚实清单）
 
-- **判定层已落地 MOD-1 / MOD-3 / MOD-4**：`structure.*` 六条 + `collision.*` 四条 + `accessibility`
-  三级可用；`container` / `budget.*` 与编码推断仍待 M5。不带 `--module` 的 `check` 返回 3
-  是**设计语义**，不是故障。
+- **五模块全部落地**（M5）：`structure.*` 六条 + `collisions` 四条 + `accessibility` 三级 +
+  `encoding.*` 推断 + `container.*` 五条 + `budget.*` 两条。不带 `--module` 的 `check` 出完整报告
+  （`clean.zip` 退 0，三数组皆空）。
 - **Linux/macOS 侧的可访问性只报"创建即失败"**：空名 / NUL / 空组件这类跨平台都成立的；
   保留名、尾随裁剪、冒号截断都是 **Windows 专属**规则，不在别的平台上猜（`plan/05` §五 U2/U19）。
 - **上标 ¹²³ 设备名（`COM¹`/`LPT³`）按实测判 `OK`**：`CreateFileW` 能创建、应用层也读得到；
@@ -130,8 +160,11 @@ extract-oracle check data/fixtures/trailing.zip --target windows --module access
   而我们没有 macOS 折叠表——用 `lower()` 近似会误判，所以只报 `NFC`。这是**收窄不是猜测**。
 - **Windows 折叠的强度标 `table_simulated` 而非 `measured`**：判据是"表 + 目标平台"，
   不是"我们恰好在 Windows 上跑"——两条纪律不能混。
-- **`encoding` 只有骨架**：原始名字节、bit 11、extra fields（含 `0x7075` 的 CRC 校验）已能读出，
-  但候选编码与 `predictedNames` 在 M5——所以 `capabilities` 里它仍显示 `pending`。
+- **编码推断的 `source` 随预测一起输出**：`unzip` 的 `cp850` 与 `7zip`/`libarchive` 的 `gbk`
+  是**本机环境事实**（换宿主要重测并重写 `encoding.ANSI_CODEC` / `UNZIP_CODEC`），不是规范条文；
+  APPNOTE 只规定"历史 CP437"与"bit 11 置位则 MUST UTF-8"（`docs/rules.md` §八）。
+- **`budget.PATH_OVER_260` 不是"必然截断"**：见上文（U12）；本机 `LongPathsEnabled=1` 时超 260 的
+  路径照常创建，所以这条是**可移植性告警**。
 - **macOS / Linux 落盘行为未实测**（本机只有 Windows）：这些判定输出标 `table_simulated` / `medium`，不是 `measured`。
 - **APFS 归一化依据为中硬**：来自逆向文档与实操观察，**非 Apple 官方规范**，输出标 `evidence_strength: medium`。
 - **不做**：解压、zip slip / zip bomb / 恶意检测、安全打分、"该用哪个工具"的建议、GUI/Web 界面。

@@ -455,14 +455,19 @@ def test_exit_code_counts_accessibility_as_judgement_output(capsys):
     assert payload["summary"]["accessibility_count"] == 2
 
 
-def test_check_without_module_still_refuses_while_encoding_and_container_missing(capsys):
-    """不给 `--module` = 要求五模块齐备；还剩两个 → 退 3（收窄 ≠ 豁免）。"""
+def test_check_without_module_reports_all_five_modules_after_m5(capsys):
+    """不给 `--module` = 要求五模块齐备。M5 后齐备了，报告里必须写明**五模块全在范围**。
+
+    M4 时这条断言的是"还剩两个 → 退 3"；M5 同提交翻成正向（`plan/HANDOFF-M5.md` §3 第 6 条）。
+    """
 
     code = main(["check", str(FIXTURES / "clean.zip"), "--target", "windows"])
-    assert code == int(ExitCode.CAPABILITY_MISSING)
-    payload = json.loads(capsys.readouterr().err.strip())
-    assert payload["error"] == ReasonCode.CAPABILITY_MISSING.value
-    assert set(payload["detail"]["missing_modules"]) == {"encoding", "container"}
+    assert code == int(ExitCode.OK)
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["modules"] == [module.name for module in MODULES]
+    # 需要平台表的两个模块都在范围内 → `platforms` 块带表身份（跨机可比）
+    assert payload["platforms"] is not None
+    assert payload["platforms"]["ntfs_upcase"]["sha256"]
 
 
 def test_missing_platform_table_still_refuses_accessibility(tmp_path, capsys, monkeypatch):

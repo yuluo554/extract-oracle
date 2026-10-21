@@ -18,8 +18,9 @@ from pathlib import Path
 from typing import Any
 
 #: 报告 schema 版本。M2 起 `inspect` 增加 `entries` / `names` 两层（加法，不改既有键）；
-#: M4 起 `check` 的 `entries[]` 增加 `accessibility`（同样只加不改）。
-SCHEMA_VERSION = "0.2"
+#: M4 起 `check` 的 `entries[]` 增加 `accessibility`；M5 起 `check` 增加 `encoding`（推断面，
+#: `data/README.md` §4.12）与 `container`（容器识别，§4.13）两个顶层块（同样只加不改）。
+SCHEMA_VERSION = "0.3"
 
 #: 文本面渲染 `accessibility` 计数时的行内顺序（`data/README.md` §4.2 的四个取值）。
 #:
@@ -27,6 +28,9 @@ SCHEMA_VERSION = "0.2"
 #: 加一条 `report → rules` 的边会让分层图多出一个方向。两份枚举的一致性由
 #: `tests/test_accessibility.py::test_report_level_order_matches_rules` 钉住。
 ACCESS_LEVELS: tuple[str, ...] = ("BLOCKED", "WRITTEN_UNREADABLE", "WRITTEN_TRUNCATED", "OK")
+
+#: 文本面渲染编码置信度时的固定顺序（`data/README.md` §4.4 的三档）。
+CONFIDENCE_LEVELS: tuple[str, ...] = ("high", "medium", "low")
 
 
 def dumps_json(payload: dict[str, Any]) -> str:
@@ -59,6 +63,21 @@ def render_text(payload: dict[str, Any]) -> str:
             "accessibility "
             + " ".join(f"{name}={levels.get(name, 0)}" for name in ACCESS_LEVELS)
         )
+    if summary.get("low_confidence_count") is not None:
+        # MOD-2（§4.4）：编码置信度分布。顺序固定，不遍历 dict。
+        encoding = payload.get("encoding") or []
+        counts = {
+            level: sum(1 for item in encoding if item.get("confidence") == level)
+            for level in CONFIDENCE_LEVELS
+        }
+        lines.append(
+            "encoding "
+            + " ".join(f"{name}={counts[name]}" for name in CONFIDENCE_LEVELS)
+            + f" low_confidence={summary['low_confidence_count']}"
+        )
+    container = payload.get("container")
+    if container is not None:
+        lines.append(f"container kind={container.get('kind', '-')}")
     findings = payload.get("findings", [])
     if findings:
         lines.append("")

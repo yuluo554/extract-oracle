@@ -1,4 +1,4 @@
-# rules · 规则原句台账（M4 定稿）
+# rules · 规则原句台账（M4 定稿，M5 补 §八）
 
 > **本文件回答一个问题：每条判定到底引的是谁的原话？**
 > 纪律：**没有原句就不写确定语气**。原句已核对 → 直引；只有要点转述 → 标 `⬜ 原句待回填`。
@@ -12,6 +12,8 @@
 > 差异在于本文件把「APPNOTE 未要求 LFH/CD 一致」单列一行、而把 ODF 尾随换行并入 ODF 行。
 > 这里按 §1.4 逐行落地，**宁可多一行，不漏一条**）。M4 另加一行（#15 POSIX `Filename` 定义），
 > 因为原表把"/ 不可出现在文件名"挂在 `pathname(7)` 上——**实测那句不在那篇 man page 里**（见 §五）。
+> M5 的编码推断另立一行（#16 four-tool name model），因为那三条是**本机实测的实现选择**，
+> 不是规范条文——同 §二 #9/#10 的性质（见 §八）。
 
 ## 一、总表
 
@@ -32,6 +34,7 @@
 | 13 | `container.*`（ODF 上下文） | ODF 1.2 part 3 §3.3 · Packages | `https://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part3.html` | "shall be the first file"；"shall not be compressed… shall not use an 'extra field'" | 硬 | ✅ 原句已核对 |
 | 14 | `container.MIMETYPE_PADDING`（ODF 上下文，带 `inferred: true`） | 从 media-type 相等约束推出 | 同上 | **ODF 原文未明文禁止尾随换行** | 推断 | ✅ 已标注 `inferred`；**不得**写成 ODF 明文要求 |
 | 15 | `accessibility.BLOCKED`（Linux 侧的 `/` 与空名）、`budget.*`（`NAME_MAX`/`PATH_MAX` 的**字节**口径） | POSIX · Base Definitions §3.170 `Filename` / `{NAME_MAX}` / `{PATH_MAX}` | `https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html` | §3.170："A sequence of bytes consisting of 1 to {NAME_MAX} bytes used to name a file.  The bytes composing the name **shall not contain the \<NUL\> or \<slash\> characters**."；`{NAME_MAX}`："Maximum number of **bytes** in a filename (not including the terminating null of a filename string)."；`{PATH_MAX}`："Maximum number of bytes the implementation will store as a pathname in a user-supplied buffer of unspecified size, including the terminating null character." | 硬 | ✅ 原句已回填（M4）；**M4 新增行**——原表把这条挂在 `pathname(7)` 上，实测那篇没有（§五 更正①） |
+| 16 | `encoding.predictedNames`（四个提取器各自的落盘名模型） | **本机四工具实测**（`data/tool-matrix/`）+ UnZip 6.00 编译选项 | —（**不是规范条文**：APPNOTE 只说"历史 CP437"，没说现代实现用哪个码页） | 见 §八；`unzip` 的 128 个高位字节逐字节对照表在 `data/README.md` §4.12 | 硬（本机实测） | ✅ M5 落地；**这是实现选择，不得写成"规范要求"** |
 
 > 强度纪律（`data/README.md` §5）：任何 `中硬`/`推断` 项，输出必须带对应标记
 > （`evidence_strength: medium` / `inferred: true`），且文档不得用确定语气。
@@ -70,8 +73,11 @@
 | `container.MIMETYPE_PADDING`（EPUB） | 11 | "MUST NOT contain any leading or trailing padding or whitespace" |
 | `container.MIMETYPE_PADDING`（ODF） | 14 | **原文未禁止** → `inferred: true` |
 | `container.UTF8_REQUIRED` | 12 | "OCF ZIP containers MUST encode file system names using UTF-8" |
-| `budget.PATH_OVER_260` | 1 | MS Learn `MAX_PATH=260`；本机 `LongPathsEnabled=1` 时**创建仍成功** → 只作可移植性告警（`plan/05` §五 U12） |
+| `budget.PATH_OVER_260` | 1,15 | Windows 侧 MS Learn `MAX_PATH=260`；本机 `LongPathsEnabled=1` 时**创建仍成功** → 只作可移植性告警（`plan/05` §五 U12）。Linux 侧另引 #15 的 `{PATH_MAX}` **字节**口径 |
 | `budget.COMPONENT_OVER_255` | 1,15 | Windows 侧按 UTF-16 码元；Linux 侧按 POSIX `{NAME_MAX}` 的**字节**口径 |
+| `encoding.predictedNames.<tool>` | 16 | **本机四工具实测**（`data/tool-matrix/`）：实现选择，不是规范条文（§八） |
+| `encoding.candidates[]` / `preferred`（K02 顺序与强弱结构） | 6 | D.1 的 CP437 是候选之一；**候选顺序是本项目口径**（§4.4），不是 APPNOTE 规定 |
+| `encoding.UPATH_CRC_MISMATCH` / `upath` | 7 | §4.6.9 的 `NameCRC32`；校验失配 → 降级 `low` |
 
 ## 三、M1 实测对既有表述的修正（必须先看这里再动 M2/M3/M4）
 
@@ -188,3 +194,38 @@ MOD-3 的四条规则已全部落地（`rules/fold.py`）。**"有 `evidence_str
 「Apple 官方规范」，只在 macOS 的 `note` 里出现**否定形**（"非 Apple 官方规范"）。
 判据在 `tests/test_fold.py::test_norm_zip_macos_reports_nfc`（断言该串必须出现）
 与 `data/README.md` §4.3（断言收窄理由留痕）。
+
+---
+
+## 八、M5 落地时的依据核对（2026-10-21）
+
+MOD-2 的编码推断与 MOD-5 的容器/预算已全部落地（`rules/encoding.py` / `rules/container.py` /
+`rules/budget.py`）。**"有 `source` / `precedent` 字段"与"依据挂对了"是两件事**，所以逐条记下
+用的是哪一种依据、以及哪一条**不能**升级成规范语气：
+
+| `ruleId` / 字段 | 落地用的依据 | 核对结果 |
+|---|---|---|
+| `encoding.candidates[]` / `preferred` | 上表 #6（APPNOTE D.1/D.2 的 CP437 与 UTF-8） | ⚠️ **候选顺序（K02）与"强弱结构"是本项目口径**，不是 APPNOTE 规定——APPNOTE 只说"历史上是 CP437"、"bit 11 置位则 MUST 为 UTF-8"。所以 `preferred` 的判据写在 `data/README.md` §4.4（本项目），不引条文 |
+| `encoding.predictedNames["python-zipfile"]` | 上表 #6 + 本机实测 | ✅ Python 3.12 `zipfile`：读 0x7075（CRC 通过时用 `utf8_name`）→ bit 11 严格 UTF-8 → 回退 CP437。实测 `zh_gbk.zip` → `╓╨╬─├√.txt` |
+| `encoding.predictedNames["info-zip-unzip"]` | 上表 #16 + 本机 128 字节逐字节实测 | ✅ Info-ZIP UnZip 6.00（Cygwin，`UNICODE_SUPPORT`）：**CP850 解码 + OEM→ANSI best-fit**（33 个码点的实测表 `CP850_TRANSLITERATION`）。**bit 11 置位与否不改变本机落盘形**（同一份 UTF-8 字节两种 flag 结果相同）——所以这条路径不按 bit 11 分叉。这不是"规范要求"，是**本机实现选择**（同 #9/#10 的性质） |
+| `encoding.predictedNames["7zip"]` / `["libarchive"]` | 上表 #16 + 本机实测 | ✅ 两者在 bit 11 未置位时按**宿主 ANSI 代码页**（本机中文 Windows → GBK）解释字节，**不做字符集探测**：有效的 UTF-8 字节（`norm.zip` 的 `café`）照样被解成 `cafe茅.txt`。所以模型写"按声明的码页解"（可解释、可复现），`ANSI_CODEC` 是**环境事实**（换宿主要跟着换），不写"它会猜" |
+| `encoding.UPATH_CRC_MISMATCH` | 上表 #7（§4.6.9 的 `NameCRC32`） | ✅ CRC 按**条目原名字节**校验（不是 utf8_name）；失配 → 覆盖失效 + 降级 `low` + 输出 finding。靶子 `tests/test_encoding.py::test_upath_crc_is_computed_over_raw_name_bytes` |
+| `encoding.candidates[]`（`commonZone` 判据） | 本项目口径（§4.4） | ✅ 只用 `unicodedata.category`（`L*`/`M*`/`N*` + ASCII 可打印），**不做任何大小写/规范化变换**（K10 的实质靶子：`is_common_zone` 若用 `.lower()` 蒙混会在这里露出来） |
+| `container.*` 五条 | 上表 #11/#12/#13/#14 | ✅ 逐条对上 EPUB 3.3 §4.3.3 / §4.3.2 与 ODF 1.2 p3 §3.3；`MIMETYPE_PADDING` 在 **ODF 上下文**标 `inferred: true`（#14），EPUB 上下文 `false`（#11 原文明文）。判据在 `tests/test_container.py::test_odf_padding_is_inferred_while_epub_padding_is_not` |
+| `container.UTF8_REQUIRED` | 上表 #12（EPUB 3.3 §4.3.2） | ✅ 只对 **bit 11 未置位且名字非纯 ASCII** 的条目报：纯 ASCII 在 UTF-8 与 CP437 下同形，报它是假阳性。**ODF 上下文不套用**（那条依据属 OCF，不属 ODF） |
+| `budget.PATH_OVER_260` | 上表 #1（MS Learn `MAX_PATH=260`）+ #15（Linux `{PATH_MAX}`） | ✅ Windows 按 **UTF-16 码元**（含终止 NUL）、Linux 按 **字节**；`evidence.platform` 必带（两个上限不是同一口径）。`evidence.kind = portability_budget` 且 `message` 不含"截断/创建失败"——U12 要求把"超预算"与"本机创建失败"分成两件事，靶子 `tests/test_budget.py::test_path_over_260_is_a_budget_warning_not_a_local_truncation` |
+| `budget.COMPONENT_OVER_255` | 上表 #1 + #15 | ✅ Windows 按 UTF-16 码元、Linux 按**字节**（`{NAME_MAX}`）；按组件切（U19），`/` 是分隔符。`kind = platform_limit`（与 `PATH_OVER_260` 的预算告警区分） |
+
+**禁令复核**：M5 三个模块的 `message` / `precedent` / `evidence` 里逐字检索过
+「规范要求」「spec requires」「must be identical」「SHOULD match」，**零命中**；
+`encoding.predictedNames` 的 `rule` 词表里也没有任何"规范"字样。判据 =
+`tests/test_encoding.py::test_predictions_match_the_documented_truth` 与
+`tests/test_container.py::test_mimetype_findings_carry_a_documented_precedent`
+（后者断言 `precedent` 必须落在 `container.PRECEDENTS` 枚举里）。
+
+**一处依据的诚实边界（不升级强度）**：`info-zip-unzip` 与 `7zip`/`libarchive` 的名字模型
+**完全来自本机实测**（UnZip 6.00 Cygwin / 7-Zip 25.01 / bsdtar 3.8.4，2026-10-21）。APPNOTE 只
+规定"历史 CP437"与"bit 11 置位则 MUST UTF-8"，**没有**规定实现该用哪个码页、或该不该探测字符集。
+所以这三条在 `data/README.md` §4.12 里显式记为**实现选择**（与 #9/#10 的读头选择同一性质），
+`source` 字段随每条预测一起输出（`cp850` / `gbk`），换宿主时要重测并重写那两个常量。
+**拿到"逐格对得上"不等于拿到"规范背书"**——这条不能因为"实测全绿"被读成"依据变硬了"。

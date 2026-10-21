@@ -145,3 +145,81 @@ def test_findings_are_sorted_deterministically():
     findings = json.loads(text)["findings"]
     keys = [(item["cdOffset"] if item["cdOffset"] is not None else -1, item["ruleId"]) for item in findings]
     assert keys == sorted(keys)
+
+
+# ---------------------------------------------------------------- M5 的三个新输出面
+
+
+def test_encoding_block_is_byte_identical_across_runs():
+    """K09：`encoding[]` 是新面（候选列表 / 置信度 / 四工具预测），双跑必须逐字节一致。"""
+
+    for fixture in ("zh_gbk.zip", "upath_badcrc.zip", "norm.zip"):
+        first = _run_json(
+            ["check", str(FIXTURES / fixture), "--target", "windows", "--module", "encoding"]
+        )
+        second = _run_json(
+            ["check", str(FIXTURES / fixture), "--target", "windows", "--module", "encoding"]
+        )
+        assert first == second, fixture
+
+
+def test_container_and_budget_are_byte_identical_across_runs():
+    """K09：`container` 块与 `budget.*` findings 同样双跑逐字节一致。"""
+
+    for fixture in ("padding.epub", "long_path.zip", "long_comp.zip"):
+        argv = ["check", str(FIXTURES / fixture), "--target", "windows,linux", "--module", "container"]
+        assert _run_json(argv) == _run_json(argv), fixture
+
+
+def test_full_check_is_byte_identical_across_runs():
+    """五模块齐备后的完整 `check` 报告双跑逐字节一致（含全部新面 + `platforms` 块）。"""
+
+    argv = ["check", str(FIXTURES / "reserved.zip"), "--target", "windows,linux"]
+    assert _run_json(argv) == _run_json(argv)
+
+
+def test_m5_output_has_no_host_path_and_no_timestamp():
+    """新输出面同样不得出现盘符路径 / 时间戳（K03 的常驻判据扩到 encoding/container）。"""
+
+    for argv in (
+        ["check", str(FIXTURES / "upath_badcrc.zip"), "--target", "windows", "--module", "encoding"],
+        ["check", str(FIXTURES / "padding.epub"), "--target", "windows", "--module", "container"],
+        ["check", str(FIXTURES / "clean.zip"), "--target", "windows"],
+    ):
+        _code, text = _run_json(argv)
+        assert not re.search(r"\b[A-Za-z]:[\\/]", text), argv
+        assert "/home/" not in text and "/Users/" not in text, argv
+        assert not re.search(r"\b20\d{2}-\d{2}-\d{2}T\d{2}:", text), argv
+
+
+def test_container_block_is_null_outside_scope_and_encoding_too():
+    """`null` 与"查了没问题"是两件事：不在范围内时两块都是 `null`（§4.12/§4.13）。"""
+
+    import json
+
+    _code, text = _run_json(
+        ["check", str(FIXTURES / "clean.zip"), "--target", "windows", "--module", "structure"]
+    )
+    payload = json.loads(text)
+    assert payload["encoding"] is None
+    assert payload["container"] is None
+    assert payload["summary"]["low_confidence_count"] is None
+
+
+def test_text_render_includes_m5_summaries():
+    """文本面也要能看见新面（否则人读面与机读面会漂）。"""
+
+    from extract_oracle.cli import main
+
+    import io
+    from contextlib import redirect_stdout
+
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        code = main(
+            ["check", str(FIXTURES / "padding.epub"), "--target", "windows", "--format", "text"]
+        )
+    out = buffer.getvalue()
+    assert code in (0, 1)
+    assert "container kind=epub" in out
+    assert "encoding high=" in out

@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
@@ -28,12 +29,32 @@ from .platforms import load as load_platforms
 from .platforms import verify as verify_platforms
 from .report import SCHEMA_VERSION, dumps_json, render_text, write_atomic
 from .rules import access as access_rules
+from .rules import budget as budget_rules
+from .rules import container as container_rules
 from .rules import encoding as encoding_rules
 from .rules import fold as fold_rules
 from .rules import structure as structure_rules
 from .zip_reader import Archive, read_archive
 
 TARGETS = ("windows", "macos", "linux")
+
+
+@dataclass(frozen=True)
+class ModuleResult:
+    """一个判定模块的产出（`_run_module` 的返回值）。
+
+    五个字段对应五种形状，`None`/空元组 = 该模块不产这一种。这样加模块时不用再动一个
+    四元组（`plan/HANDOFF-M5.md` §2 第 4 条点的就是这个：任一新形状都要同提交扩元组；
+    这里一次扩成具名字段，后续加形状只加字段）。
+    """
+
+    findings: tuple[Finding, ...] = ()
+    collisions: tuple[Collision, ...] = ()
+    accessibility: dict[int, dict[str, dict]] | None = None
+    #: MOD-2 的推断面（`data/README.md` §4.12）：按 `entry_index` 升序的数组。
+    encoding: list[dict] | None = None
+    #: MOD-5 的容器识别结果（`data/README.md` §4.13）：`{"kind": "epub"|"odf"|"none"}`。
+    container: dict[str, str] | None = None
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -141,30 +162,44 @@ def _run_module(
     archive: Archive,
     targets: list[str],
     tables: PlatformTables,
-) -> tuple[tuple[Finding, ...], tuple[Collision, ...], dict[int, dict[str, dict]]]:
+) -> "ModuleResult":
     """按模块名分派到判定层。未实现的模块在 `cmd_check` 里已被拒（走不到这里）。
 
-    返回 `(findings, collisions, accessibility)`，三种形状各归其主：
+    五种形状各归其主（`ModuleResult` 的字段就是这五种）：
 
-    - `Finding`：MOD-1 / MOD-2 / MOD-5（`structure` / `encoding` / `container`）；
+    - `Finding`：MOD-1 / MOD-2 / MOD-5（`structure` / `encoding` / `container` / `budget`）；
     - `Collision`：MOD-3（`fold`，`plan/01` §2 模块③）；
-    - `dict[entry_index, dict[platform, verdict]]`：MOD-4（`accessibility`，`data/README.md` §4.2）。
+    - `dict[entry_index, dict[platform, verdict]]`：MOD-4（`accessibility`，`data/README.md` §4.2）；
+    - `encoding[]` 块：MOD-2 的推断面（`data/README.md` §4.12）；
+    - `container` 块：MOD-5 的容器识别结果（§4.13）。
 
     形状契约都在包根 `findings.py` / 本模块——判定层之间互不 import（K10），
     所以 M4 需要的"会写出什么名字"由这里组装后作为参数传入，`rules/access.py` 不 import `fold.py`。
     """
 
     if name == "structure":
-        return structure_rules.check(archive), (), {}
+        return ModuleResult(findings=structure_rules.check(archive))
+    if name == "encoding":
+        findings, block = encoding_rules.check(archive)
+        return ModuleResult(findings=findings, encoding=block)
     if name == "accessibility":
         # 判定层只吃"归档 + 目标平台 + 平台表"；条目名来自 CD（与 MOD-1/3 同一字节源）。
         assert tables is not None  # noqa: S101 - cmd_check 已保证（accessibility 必带表）
-        return (), (), access_rules.check(archive, targets, tables)
+        return ModuleResult(accessibility=access_rules.check(archive, targets, tables))
     if name == "fold":
         # MOD-3 消费的是"名字集合 + 目标平台 + 平台表"，由调用方组装后传入
         # （`plan/02` §二：判定模块之间不 import，也不做模块级全局单例）。
         assert tables is not None  # noqa: S101 - cmd_check 已保证（fold 必带表）
-        return (), fold_rules.check(archive, targets, tables), {}
+        return ModuleResult(collisions=fold_rules.check(archive, targets, tables))
+    if name == "container":
+        # `container` 模块 = `container.*`（MOD-5 容器约定）+ `budget.*`（MOD-5 长度预算）。
+        # 两个判定模块**不能互相 import**（K10），所以由这里各调一次再把 findings 合并。
+        container_findings, kind = container_rules.check(archive)
+        budget_findings = budget_rules.check(archive, targets, tables)
+        return ModuleResult(
+            findings=tuple(container_findings) + tuple(budget_findings),
+            container=kind,
+        )
     raise AssertionError(f"未分派的模块: {name}")  # pragma: no cover - 门在 cmd_check
 
 
@@ -300,8 +335,12 @@ def cmd_check(args: argparse.Namespace) -> int:
     findings: list[Finding] = []
     collisions: list[Collision] = []
     accessibility: dict[int, dict[str, dict]] = {}
+    encoding_block: list[dict] | None = None
+    container_block: dict[str, str] | None = None
     # 平台表按需加载：只有本次范围含需要平台语义的模块且目标里有平台依赖时才读表。
     # 表缺/校验失败 = `platform_table_missing`（退出码 3），**不静默跳过该平台的判定**。
+    # M5 的 `budget` 通过 `rules/budget.py::declared_platforms()`（恒空）声明"不查表"，
+    # 所以它不会把 `$UpCase` 表变成 `container` 模块的隐式依赖。
     needs_tables = {
         "fold": fold_rules.PLATFORMS,
         "accessibility": access_rules.PLATFORMS,
@@ -313,12 +352,15 @@ def cmd_check(args: argparse.Namespace) -> int:
             break
 
     for name in scope:
-        module_findings, module_collisions, module_access = _run_module(
-            name, archive, targets, tables
-        )
-        findings.extend(module_findings)
-        collisions.extend(module_collisions)
-        accessibility.update(module_access)
+        result = _run_module(name, archive, targets, tables)
+        findings.extend(result.findings)
+        collisions.extend(result.collisions)
+        if result.accessibility is not None:
+            accessibility.update(result.accessibility)
+        if result.encoding is not None:
+            encoding_block = result.encoding
+        if result.container is not None:
+            container_block = result.container
     ordered_findings = sort_findings(findings)
     ordered_collisions = sort_collisions(collisions)
     verdicts = [
@@ -343,6 +385,11 @@ def cmd_check(args: argparse.Namespace) -> int:
         "entries": entries,
         "findings": [item.to_dict() for item in ordered_findings],
         "collisions": [item.to_dict() for item in ordered_collisions],
+        # MOD-2 的推断面（`data/README.md` §4.12）：只在 `encoding` 在范围内时出现，
+        # 否则 `null`——"没查"与"查了没问题"是两件事（同 §4.11 的 `accessibility_levels`）。
+        "encoding": encoding_block,
+        # MOD-5 的容器识别（§4.13）：同上，不在范围内是 `null`。
+        "container": container_block,
         "platforms": tables.to_report_dict() if tables is not None else None,
         "summary": {
             "entry_count": len(archive.entries),
@@ -351,6 +398,13 @@ def cmd_check(args: argparse.Namespace) -> int:
             # MOD-4（`data/README.md` §4.2）：非 `OK` 的 (条目, 平台) 对数与逐级计数。
             "accessibility_count": inaccessible,
             "accessibility_levels": access_counts if "accessibility" in scope else None,
+            # MOD-2（§4.4）：`low` 置信度的条目数。**不参与退码**（§4.1 仍是三条来源）——
+            # 编码猜不准是"不确定"，不是"发现问题"；把它并进退码会让普通 GBK 样本假报。
+            "low_confidence_count": (
+                encoding_rules.count_low_confidence(encoding_block)
+                if encoding_block is not None
+                else None
+            ),
         },
     }
     text = dumps_json(payload) if args.format == "json" else render_text(payload)

@@ -67,34 +67,63 @@ def test_non_zip_is_input_unreadable(tmp_path, capsys):
     assert payload["error"] == ReasonCode.EOCD_NOT_FOUND.value
 
 
-def test_check_refuses_while_modules_missing(capsys):
-    """最坏的一种假绿：空 findings + 退出码 0。骨架期必须显式拒绝。"""
+def test_check_with_no_missing_modules_reports_zero_on_clean_archive(capsys):
+    """五模块齐备后，不带 `--module` 的 `check` 对干净归档必须**退 0 且三数组皆空**。
 
-    if not missing_core():  # pragma: no cover - M5 之后此分支才会走到
-        pytest.skip("五模块已全部落地，本断言不再适用（应由 findings 断言接管）")
+    M4 时这里还是"缺两模块 → 退 3"的拒绝断言，并在五模块齐备时 `pytest.skip`。跳过会变成
+    静默假绿（`plan/HANDOFF-M5.md` §3 第 6 条），所以 M5 同提交改成**正向断言**：
+    模块齐备了这个事实本身要被一条真跑过的输出证明，而不是"没跑到"。
+    """
+
+    assert missing_core() == [], "五模块应全部落地——本断言的前提"
     code = main(["check", str(FIXTURES / "clean.zip"), "--target", "windows"])
-    assert code == int(ExitCode.CAPABILITY_MISSING)
     captured = capsys.readouterr()
-    assert captured.out == ""  # stdout 不产出半份报告
-    payload = json.loads(captured.err.strip())
-    assert payload["error"] == ReasonCode.CAPABILITY_MISSING.value
-    assert set(payload["detail"]["missing_modules"]) == set(missing_core())
+    assert code == int(ExitCode.OK), captured.err
+    payload = json.loads(captured.out)
+    assert payload["modules"] == [module.name for module in MODULES]
+    assert payload["findings"] == []
+    assert payload["collisions"] == []
+    assert payload["summary"]["accessibility_count"] == 0
+    # 三个判定产出之外的字段必须是"查过了"，不是 null（null = 没查）
+    assert payload["encoding"] is not None
+    assert payload["container"] is not None
+    assert payload["summary"]["low_confidence_count"] is not None
 
 
 def test_check_module_scope_refuses_unimplemented_module(capsys):
-    """`--module` 是**收窄**不是**豁免**：点名一个没落地的模块照样退 3。"""
+    """`--module` 是**收窄**不是**豁免**：点名的模块没落地照样退 3。
 
-    unimplemented = [module.name for module in MODULES if not module.implemented]
-    if not unimplemented:  # pragma: no cover
-        pytest.skip("五模块已全部落地")
-    code = main(
-        ["check", str(FIXTURES / "clean.zip"), "--target", "windows", "--module", unimplemented[0]]
+    M5 起五模块全落地，正常路径走不到这个分支了；判据仍在，用**注入**的方式证伪——
+    临时把某个模块的 `implemented` 翻回 False，门必须重新变红。这样"能力门还在"这件事
+    不依赖"恰好还剩一个没实现的模块"（那种依赖会在下一个里程碑消失）。
+    """
+
+    from extract_oracle import capabilities, cli
+
+    original = capabilities.MODULES
+    broken = tuple(
+        capabilities.Capability(
+            item.name, item.milestone, item.rule_prefix, implemented=False if index == 0 else item.implemented
+        )
+        for index, item in enumerate(original)
     )
+    # 两处都要换：`miss` 读模块全局（调用时查），`cli` 在 import 时绑了名字。
+    original_cli = cli.MODULES
+    try:
+        capabilities.MODULES = broken
+        cli.MODULES = broken
+        code = main(
+            ["check", str(FIXTURES / "clean.zip"), "--target", "windows", "--module", broken[0].name]
+        )
+    finally:
+        capabilities.MODULES = original
+        cli.MODULES = original_cli
+
     assert code == int(ExitCode.CAPABILITY_MISSING)
     captured = capsys.readouterr()
     assert captured.out == ""
     payload = json.loads(captured.err.strip())
-    assert payload["detail"]["missing_modules"] == [unimplemented[0]]
+    assert payload["detail"]["missing_modules"] == [broken[0].name]
 
 
 def test_check_unknown_module_is_usage_error():

@@ -191,3 +191,92 @@ jobs:
           fi
           if [ "$fail" -ne 0 ]; then exit 1; fi
           echo "accessibility smoke OK"
+      - name: Encoding smoke
+        # MOD-2 的交付态冒烟：三份编码样本各自的预测结论（退出码 1/0）与 0x7075 两种结局。
+        # 退出码是口径（`data/README.md` §4.1），所以这里显式断言它，不用 `|| true` 吞掉。
+        shell: bash
+        run: |
+          set -uo pipefail
+          fail=0
+          # `upath.zip` 的 0x7075 CRC 有效 → 四工具一致 `café.txt`，无 finding（退 0）
+          upath=$(extract-oracle check data/fixtures/upath.zip --target windows --module encoding)
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "FAIL upath.zip: 期望退出码 0（覆盖生效，无 finding），实得 $rc"; fail=1
+          fi
+          for tool in python-zipfile info-zip-unzip 7zip libarchive; do
+            echo "$upath" | grep -q "\"$tool\": {" || { echo "FAIL upath.zip: 缺 $tool 预测"; fail=1; }
+          done
+          echo "$upath" | grep -q '"café.txt"' || { echo "FAIL upath.zip: 缺 café.txt 覆盖名"; fail=1; }
+          # `upath_badcrc.zip`：CRC 失配 → 唯一一条 finding + 降级 low（退 1）
+          bad=$(extract-oracle check data/fixtures/upath_badcrc.zip --target windows --module encoding)
+          rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "FAIL upath_badcrc.zip: 期望退出码 1，实得 $rc"; fail=1
+          fi
+          echo "$bad" | grep -q '"encoding.UPATH_CRC_MISMATCH"' || { echo "FAIL upath_badcrc.zip: 缺 UPATH_CRC_MISMATCH"; fail=1; }
+          echo "$bad" | grep -q '"confidence": "low"' || { echo "FAIL upath_badcrc.zip: 未降级 low"; fail=1; }
+          # `zh_gbk.zip`：三条提取器路径的预测名各不同（退 0：编码猜不准不是"发现问题"）
+          gbk=$(extract-oracle check data/fixtures/zh_gbk.zip --target windows --module encoding)
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "FAIL zh_gbk.zip: 期望退出码 0（无 finding），实得 $rc"; fail=1
+          fi
+          echo "$gbk" | grep -q '"中文名.txt"' || { echo "FAIL zh_gbk.zip: 缺 GBK 解码名"; fail=1; }
+          echo "$gbk" | grep -q '"╓╨╬─├√.txt"' || { echo "FAIL zh_gbk.zip: 缺 CP437 回退名"; fail=1; }
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+          echo "encoding smoke OK"
+      - name: Container and budget smoke
+        # MOD-5 的交付态冒烟：四 mimetype 样本各命中一 code（退 1）；两条反向：
+        # `clean.zip` 五模块零误报（退 0）、两个预算 fixture 各命中一条。
+        # 退出码是口径（`data/README.md` §4.1），所以这里显式断言它，不用 `|| true` 吞掉。
+        shell: bash
+        run: |
+          set -uo pipefail
+          fail=0
+          for pair in \
+            "not_first.epub container.MIMETYPE_NOT_FIRST" \
+            "compressed.epub container.MIMETYPE_COMPRESSED" \
+            "extra.epub container.MIMETYPE_EXTRA" \
+            "padding.epub container.MIMETYPE_PADDING"
+          do
+            set -- $pair
+            fixture=$1
+            code=$2
+            out=$(extract-oracle check "data/fixtures/$fixture" --target windows --module container)
+            rc=$?
+            if [ "$rc" -ne 1 ]; then
+              echo "FAIL $fixture: 期望退出码 1，实得 $rc"; fail=1
+            fi
+            echo "$out" | grep -q "\"$code\"" || { echo "FAIL $fixture: 缺 $code"; fail=1; }
+          done
+          # 预算两条各命中一个（`long_path` 是预算告警、`long_comp` 是平台硬限）
+          for pair in \
+            "long_path.zip budget.PATH_OVER_260" \
+            "long_comp.zip budget.COMPONENT_OVER_255"
+          do
+            set -- $pair
+            fixture=$1
+            code=$2
+            out=$(extract-oracle check "data/fixtures/$fixture" --target windows --module container)
+            rc=$?
+            if [ "$rc" -ne 1 ]; then
+              echo "FAIL $fixture: 期望退出码 1，实得 $rc"; fail=1
+            fi
+            echo "$out" | grep -q "\"$code\"" || { echo "FAIL $fixture: 缺 $code"; fail=1; }
+          done
+          # 反向一：`clean.zip` 五模块齐备时零误报（退 0，三数组皆空）
+          clean=$(extract-oracle check data/fixtures/clean.zip --target windows)
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "FAIL clean.zip: 期望退出码 0（五模块零误报），实得 $rc"; fail=1
+          fi
+          echo "$clean" | grep -q '"findings": \[\]' || { echo "FAIL clean.zip: findings 非空"; fail=1; }
+          echo "$clean" | grep -q '"collisions": \[\]' || { echo "FAIL clean.zip: collisions 非空"; fail=1; }
+          # 反向二：`long_path.zip` 在可访问性下不得是 BLOCKED（U12：预算不是截断）
+          longp=$(extract-oracle check data/fixtures/long_path.zip --target windows --module accessibility)
+          if echo "$longp" | grep -q '"level": "BLOCKED"'; then
+            echo "FAIL long_path.zip: 预算告警被误判成 BLOCKED"; fail=1
+          fi
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+          echo "container and budget smoke OK"

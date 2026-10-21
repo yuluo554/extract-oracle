@@ -294,6 +294,18 @@ libfsapfs 的实现观察是"**大小写不敏感卷**先 lower-case"——即�
   - `low`：其余（含可解码但含控制字符/未分配码点）。
 - `upath_crc_mismatch` 时，0x7075 的覆盖判定**失效并降级为 `low`**，同时输出 finding。
 
+**M5 落地时把三处含糊写清（都是"可判定化"，不是放宽）**：
+
+1. **"常用字区"的定义**：每个字符或是 ASCII 可打印字符（`0x20`–`0x7E`），或 Unicode 类别属于
+   `L*` / `M*` / `N*`。符号（`S*`，含 `U+2500` 段框线与 `√`）与非 ASCII 标点**不算**——
+   这正是"CP437 解 GBK 字节"得到的那类"能解但是乱码"的形态（`zh_gbk.zip` 的 CP437 候选
+   `commonZone=false`）。判据只用 `unicodedata.category`，不做任何大小写/规范化变换。
+2. **`medium` 的"完整解码"要分强弱**：双字节候选（UTF-8/GBK/CP932/CP949）有严格结构约束，
+   非法序列即失败，所以"解全了"本身是强证据；单字节候选（CP437/CP1251）对任意字节都成立，
+   证据天然弱一档。候选排序 = 先强结构、再按上面的固定顺序（稳定、可解释，不用频率表这类无出处的东西）。
+3. **`UPATH_CRC_MISMATCH` 的降级对象是"条目级 `confidence`"**，不是"候选列表"：候选列表仍按字节
+   如实给出（`candidates[]` 是结构事实的延伸），被降级的是"这个条目最终能用多确定的口径解释"。
+
 ### 4.5 容器约定检查项（固定五条）
 
 `container.MIMETYPE_NOT_FIRST` / `MIMETYPE_COMPRESSED` / `MIMETYPE_EXTRA` / `MIMETYPE_PADDING` / `UTF8_REQUIRED`。
@@ -440,6 +452,110 @@ Windows 侧一律 `table_simulated` 而不是 `measured`——判据是**表 + �
 **证据强度**：§4.2 的判据来自**本机 Windows 实测** + MS Learn / POSIX 原文。Linux/macOS 侧只判
 "空名 / NUL / 空组件"这类**跨平台都成立**的创建失败，其余留 `OK`——`plan/05` §五 U2 的
 "macOS/Linux 落盘行为未实测"在这里的落地形式是**不猜**（不是"推定 OK"）。
+
+### 4.12 `encoding[]` 输出形状（MOD-2 的唯一表述）
+
+> `check` 报告里多一个顶层 `encoding` 数组——**只在本次 `--module` 范围含 `encoding` 时出现**，
+> 否则为 `null`（"没查"与"查了没问题"是两件事，同 §4.11）。`inspect` 恒不带（它只给 `names[]`
+> 结构事实）。字段集**新增即改本节**（同提交改 `rules/encoding.py` 与 `tests/test_encoding.py`）。
+
+```json
+{
+  "entryIndex": 0,
+  "rawNameHex": "d6d0cec4c3fb2e747874",
+  "bit11": false,
+  "upath": {"present": false, "version": null, "name_crc32": null, "utf8_name": null, "crc_valid": null},
+  "candidates": [
+    {"encoding": "CP437", "name": "╓╨╬─├√.txt", "strongStructure": false, "commonZone": false},
+    {"encoding": "GBK", "name": "中文名.txt", "strongStructure": true, "commonZone": true}
+  ],
+  "preferred": "GBK",
+  "confidence": "medium",
+  "effectiveName": "中文名.txt",
+  "predictedNames": {
+    "python-zipfile": {"name": "╓╨╬─├√.txt", "rule": "cp437_fallback"},
+    "info-zip-unzip": {"name": "Íð+-+¹.txt", "rule": "cp850_oem_transliterated", "source": "cp850"},
+    "7zip": {"name": "中文名.txt", "rule": "charset_detected", "source": "GBK"},
+    "libarchive": {"name": "中文名.txt", "rule": "charset_detected", "source": "GBK"}
+  }
+}
+```
+
+| 字段 | 类型 | 口径 |
+|---|---|---|
+| `entryIndex` | int | 与 `entries[].index` 同值同序（数组按 `entryIndex` 升序） |
+| `rawNameHex` | string | 条目**原名字节**的十六进制（唯一可靠输入，逐字节可逆） |
+| `bit11` | bool | general purpose flag bit 11 |
+| `upath` | object | `0x7075` 的结构事实（`present` / `version` / `name_crc32` / `utf8_name` / `crc_valid`）；不存在时 `present=false` 且其余为 `null` |
+| `candidates[]` | object[] | **只收完整解码成功的候选**，顺序 = §4.4 的 K02 顺序；每项 `{encoding, name, strongStructure, commonZone}` |
+| `preferred` | string \| null | 候选里的胜出者（判据见 §4.4 第 2 条）；无完整候选时 `null` |
+| `confidence` | string | `high` / `medium` / `low`（§4.4） |
+| `effectiveName` | string \| null | 0x7075 覆盖生效时是它，否则等于 `preferred` 的解码名；都没有时 `null` |
+| `predictedNames.<tool>` | object | 四提取器（`python-zipfile` / `info-zip-unzip` / `7zip` / `libarchive`）各自的落盘名预测 |
+| `predictedNames.<tool>.name` | string \| null | **不可解码时 `null`**（不编造替代名）；`null` 必带 `reason` |
+| `predictedNames.<tool>.rule` | string | 封闭词表 `PREDICTION_RULES`：`upath_override` / `utf8_bit11` / `charset_detected` / `cp437_fallback` / `cp850_oem_transliterated` / `undecodable` |
+
+**四提取器的落盘名模型**（每条都对着 `data/tool-matrix/` 的实测格；不是"应该一致"的推断）：
+
+| 提取器 | 名字来源 | 实测依据 |
+|---|---|---|
+| `python-zipfile` | `0x7075`（CRC 通过）→ bit 11（UTF-8）→ **CP437** | `zh_gbk.zip` 出 `╓╨╬─├√.txt`；`upath.zip` 出 `café.txt`（Python 3.12 读 0x7075） |
+| `info-zip-unzip` | `0x7075`（CRC 通过）→ **CP850 解码 + OEM→ANSI best-fit 替换表** | `zh_gbk.zip` 出 `Íð+-+¹.txt`；**bit 11 置位与否不改变本机落盘形**（同一份 UTF-8 字节两种 flag 给出同一结果——所以这条路径不按 bit 11 分叉） |
+| `7zip` / `libarchive` | `0x7075`（CRC 通过）→ bit 11 → **候选胜出者**（字符集探测） | `zh_gbk.zip` 出 `中文名.txt`（GBK）；`upath_badcrc.zip` 同 |
+
+> **`CP850_TRANSLITERATION` 是数据表不是规则**：33 个码点逐条实测（本机 UnZip 6.00 / Cygwin，
+> 2026-10-21，128 个高位字节逐字节对照）。它只做字符替换，**不做任何大小写变换**（K10）；
+> 换宿主时整表重测，不在这里加"近似推断"。
+>
+> **为什么 `unzip` 走 CP850 而不是 CP437**：实测 128 个高位字节里 CP850 命中 95 个、CP437 只命中 50 个；
+> `zh_gbk.zip` 的落盘名 `Íð+-+¹.txt` 与 CP850 逐字符对得上（框线字符被 best-fit 成 `+`/`-`/`¦`）。
+> APPNOTE 只说"历史 CP437"（§1.4 #6），**没说现代 Info-ZIP 在中文 Windows 区域设置下用哪个码页**——
+> 所以这条按实测写，`source` 字段显式标 `cp850`（`docs/rules.md` §八）。
+
+**`summary.low_confidence_count`**：`confidence == "low"` 的条目数。**不参与退码**——编码猜不准是
+"不确定"，不是"发现问题"；并进退码会让普通 GBK 样本假报。退码仍是 §4.1 的三条来源。
+
+**模型的作用域边界（诚实标注，逐格对账时必须按它挑样本）**：`predictedNames` 只预言**解码层**——
+"这条原始名字节会被解成哪个字符串"。它**不**预言工具随后的平台改写：
+
+- 7-Zip 在 Windows 上给保留名/尾随点加 `_` 前缀（`reserved.zip` 的 `_CON.txt`、`trim.zip` 的 `readme_`）；
+- 四个工具对 `:` 的 ADS 截断、尾随空格/点的裁剪；
+- Python 在 LFH/CD 名不一致时取哪个头（那是 `structure.NAME_DIVERGES` 的领域）。
+
+这三类分别由 `accessibility` / `collision` / `structure` 负责，**这里不重复也不猜测**。
+`data/tool-matrix/` 记录的是"解码 + 平台改写"的**合并**结果，所以逐格比对时要按样本分类挑：
+**整份归档只含一个条目、且两头的名字一致**的那类做逐格对账（`zh_gbk` / `upath` /
+`upath_badcrc` / 四个 mimetype 样本 / `long_*`）；带平台改写的样本（`reserved` / `trailing` /
+`trim`）只对账"解码层"这一半（`tests/test_encoding.py::test_prediction_level_is_decode_only`）。
+
+**`bit11` 置位时 `confidence = high`**（§4.4 第一条）：这是"声明"，不是"验证"——
+APPNOTE D.2 说的是 bit 11 置位时**MUST** 为 UTF-8，所以字节解不出 UTF-8 时 `bit11=true` 而
+`candidates` 里没有 UTF-8 项。那种情形仍是 `high`（声明在那），但 `predictedNames` 会落到
+各自的回退路径——两者不矛盾，一个是"宣告"，一个是"实际会写出什么"。
+
+### 4.13 `container` 块（MOD-5 的唯一表述）
+
+> `check` 报告的顶层 `container` = 容器识别结果；**只在 `container` 在本次 `--module` 范围时出现**，
+> 否则 `null`。它描述的是"这次按哪种容器约定查的"，不是"合规/不合规"。
+
+| 字段 | 类型 | 口径 |
+|---|---|---|
+| `container.kind` | string | `epub` / `odf` / `none`（三值封闭）。`none` = 识别不出容器 → **不做容器检查**、不猜（普通 ZIP 走这条，所以 `clean.zip` 零误报） |
+
+**容器识别**（`plan/03` §MOD-5）：`mimetype` 条目存在 **且**（`META-INF/container.xml` 存在
+**或** `mimetype` 内容（去掉前后空白后）等于 `application/epub+zip` 或以
+`application/vnd.oasis.opendocument.` 开头）。两者都不成立 → `none`。
+
+**`budget.*` 与本块的关系**：`budget.*` 是 `container` 模块的另一个前缀（`plan/00` §七 对照表），
+但它**不依赖** `container.kind`——长度预算对任何归档都成立（`long_path.zip` 不是 EPUB 也照样报）。
+所以 `container.kind = none` 时 `budget.*` 仍然工作。两块同属 `--module container` 的范围。
+
+**`MIMETYPE_PADDING` 在 ODF 上下文带 `inferred: true`**（`docs/rules.md` #14）：ODF 1.2 part 3 §3.3
+原文未明文禁止尾随换行，该结论从 media-type 相等约束推出。EPUB 上下文里这条是原文明文
+（"MUST NOT contain any leading or trailing padding or whitespace"），所以 `inferred: false`。
+
+**`UTF8_REQUIRED` 只对非纯 ASCII 的名字报**：纯 ASCII 在 UTF-8 与 CP437 下同形，报它等于假阳性。
+判据落在**条目原名字节**上（bit 11 的声明），不问"内容解不解得出"。
 
 ---
 

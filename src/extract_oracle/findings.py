@@ -10,6 +10,7 @@ AST 守门会（正确地）变红。包根的叶子模块不属于判定层。
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
@@ -59,17 +60,20 @@ class Finding:
         }
 
 
-def sort_key(item: Finding) -> tuple[int, str, int]:
+def sort_key(item: Finding) -> tuple[int, str, int, str]:
     """`(cd_offset, ruleId)` 升序；归档级 finding（无 CD 偏移）排最前。
 
-    第三项 `entry_index` 只是并列时的确定性兜底：同一偏移上同一规则理论上只会有一条，
-    但排序键必须是**全序**，否则并列顺序取决于输入顺序（K09）。
+    后两项是并列时的确定性兜底：同一偏移上同一规则理论上只会有一条，但 M5 的 `budget.*`
+    会**按平台**各出一条（同一组件在 Windows 与 Linux 上都超限，`evidence.platform` 不同），
+    此时前三项完全相同。第四项取证据的确定性序列化——排序键必须是**全序**，否则并列顺序
+    取决于输入顺序（K09）。
     """
 
     return (
         item.cd_offset if item.cd_offset is not None else -1,
         item.rule_id,
         item.entry_index if item.entry_index is not None else -1,
+        json.dumps(item.evidence, sort_keys=True, ensure_ascii=False, default=str),
     )
 
 

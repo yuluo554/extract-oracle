@@ -87,6 +87,9 @@ class EntryView:
     lfh_extra: tuple[ExtraField, ...]
     cd_extra: tuple[ExtraField, ...]
     method: int
+    #: 压缩数据在归档里的起点（= LFH 头 + 名字 + extra 之后）。M5 的 `container.*` 要读
+    #: `mimetype` 的**未压缩内容**，需要这个偏移；字节层只给偏移，不替判定层解压。
+    data_offset: int = 0
 
     @property
     def lfh_span(self) -> tuple[int, int]:
@@ -113,13 +116,19 @@ class EntryView:
 
 @dataclass(frozen=True)
 class Archive:
-    """一份归档的完整结构事实。"""
+    """一份归档的完整结构事实。
+
+    `data` 是**只读的归档字节本身**（`read_bytes` 已经读进来了，不额外 IO）。M5 的 `container.*`
+    需要读 `mimetype` 的**内容**（判断 `method` / 前后空白），而字节层不替判定层缓存解压产物——
+    判定层自己按 `method` 在内存里取那一段（"零解压到磁盘"指不落盘，不是不读字节）。
+    """
 
     probe: ZipProbe
     entries: tuple[EntryView, ...]
     cd_actual_entries: int
     cd_span: tuple[int, int]
     zip64: bool
+    data: bytes = b""
 
 
 def _need(data: bytes, offset: int, size: int, reason: ReasonCode, what: str) -> None:
@@ -255,6 +264,7 @@ def parse_entries(data: bytes, cd_offset: int, cd_size: int) -> tuple[tuple[Entr
                 lfh_extra=lfh["extra"],
                 cd_extra=cd_extra,
                 method=method,
+                data_offset=lfh["data_offset"],
             )
         )
         offset += record_len
@@ -295,6 +305,7 @@ def _parse_lfh(data: bytes, offset: int) -> dict:
         "name": name,
         "extra": extra,
         "end": end,
+        "data_offset": extra_start + extra_len,
     }
 
 
@@ -369,6 +380,7 @@ def read_archive(path: Path) -> Archive:
         cd_actual_entries=actual,
         cd_span=(cd_offset, cd_offset + cd_size),
         zip64=zip64,
+        data=data,
     )
 
 
