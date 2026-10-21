@@ -46,7 +46,7 @@ py -3.12 tools/check_desensitized.py
   `tests/test_artifact_e2e.py::test_artifact_carries_the_platform_table` 变红——那是设计如此。
 - **stdout 的换行是 LF**（M6 实测补的口径）：`cli._force_lf_stdout()` 只改换行翻译、**不动编码**；
   别把"修复换行"写成"改 `PYTHONIOENCODING`"（那会让非 UTF-8 控制台上的中文表标签变乱码）。
-- CI 状态：**已首推并全绿（2026-10-21）**——首轮红（五组缺陷照录，`plan/05` §5.1）、复跑轮 7/8、第三轮 8/8；run 台账在发布留档 §二。**M6 已收尾：项目无下一棒交接单**（`plan/HANDOFF-M6.md` 是最后一棒的交接单）。
+- CI 状态：**已首推并全绿（2026-10-21，共十轮，首跑红照录）**——`plan/05` §5.1/§5.2/§5.3 记了前三轮的逐条定性，其后四轮分别修了"版本分派判据写错 / `import yaml` 收集期挂掉 / Windows `which bash` 命中 WSL 启动器 / 3.9 上 `write_text(newline=)` 复发"；最后一轮 `a0fa03d` **8/8 全绿**，run 台账在发布留档 §二。**M6 已收尾：项目无下一棒交接单**（`plan/HANDOFF-M6.md` 是最后一棒的交接单）。
 - **本机 `github.com:443` 不可达**（curl 21s connect timeout / `Recv failure: Connection was reset`；实测 2026-10-21），
   但 `api.github.com` / `codeload.github.com` / `uploads.github.com` / `ssh.github.com:443` / `github.com:22` 都可达。
   ⇒ `gh repo create`、`gh api`、`gh release create` 正常，**git over HTTPS 推不动** →
