@@ -57,6 +57,24 @@ def sandbox(tmp_path: Path) -> Path:
     return root
 
 
+def _set_milestone_pending(root: Path, number: int) -> None:
+    """把某个里程碑在**三处状态副本**里显式标回 `⬜`（构造"M<k> 未完成"的状态）。
+
+    为什么需要它：沙箱拷的是真实仓库文件，所以任何"M<k> 还没做"的断言都会随项目进度过期。
+    这条 helper 让那类测试**自己构造前提**，而不是等仓库恰好处于那个状态
+    （判别 = "我这条测试，会不会因为'我把该做的事做完了'而变红？"）。
+    """
+
+    pattern = re.compile(r"^(\|\s*\**M%d\b[^\n]*?)\|\s*✅\s*\|" % number, re.M)
+    for rel in ("README.md", "plan/00-README总览.md", "plan/05-里程碑与发布.md"):
+        path = root / rel
+        text = path.read_text(encoding="utf-8")
+        updated, hits = pattern.subn(r"\1| ⬜ |", text)
+        assert hits >= 1, f"{rel} 里找不到 M{number} 的 ✅ 状态格（构造前提失败）"
+        _write_lf(path, updated)
+    # 状态副本改了之后，`plan/05` 状态表里那条也要能被 `_next_handoff` 读到——它本来就读同一份文件。
+
+
 def _replace(path: Path, old: str, new: str, count: int = 1) -> None:
     text = path.read_text(encoding="utf-8")
     assert old in text, f"变异锚点失配（变异没发生，'仍绿'不能说明任何事）: {old!r}"
@@ -126,8 +144,8 @@ def test_m3_gap_cell_mentions_done_milestone_is_red(sandbox: Path):
 
     _replace(
         sandbox / "plan" / "06-交付对标与决策.md",
-        "| CI 未实跑 | 无远端，工作流文件尚未首推 | 首推后回填 run id |",
-        "| CI 未实跑（M0 遗留） | 无远端，工作流文件尚未首推 | 首推后回填 run id |",
+        "| macOS 大小写折叠依据缺表 |",
+        "| macOS 大小写折叠依据缺表（M0 遗留） |",
     )
     code, out = _run_gate(sandbox)
     assert code == 1
@@ -142,8 +160,8 @@ def test_gap_description_column_is_not_the_gap_column(sandbox: Path):
 
     _replace(
         sandbox / "plan" / "06-交付对标与决策.md",
-        "| CI 未实跑 | 无远端，工作流文件尚未首推 | 首推后回填 run id |",
-        "| CI 未实跑 | 无远端（M0 起） | 首推后回填 run id |",
+        "| macOS 大小写折叠依据缺表 | macOS 侧只报 NFC；大小写折叠不落地（无折叠表、且不近似） |",
+        "| macOS 大小写折叠依据缺表 | macOS 侧只报 NFC；大小写折叠不落地（M0 起，无折叠表、且不近似） |",
     )
     code, out = _run_gate(sandbox)
     assert "LAYOUT.GAPS" not in _fails(out), out
@@ -170,8 +188,14 @@ def test_m4_delete_next_handoff_is_red(sandbox: Path):
 
     **不写死里程碑号**：M2 收尾后"下一棒"从 M2 变成 M3，写死 `HANDOFF-M2` 会让本测试在
     里程碑推进时变成假红（实测踩过）。靶子按门自己的判据算：`min(未完成里程碑)`。
+
+    **末棒之后要显式构造状态**（M6 收尾实测）：M6 翻 ✅ 后"下一棒"不存在，门走
+    "已是最后一个里程碑，无下一棒交接单要求"分支——那时本判据**没有正向靶子**（这是设计如此，
+    不是门坏了）。所以这里先在沙箱里**显式把 M6 标回未完成**，把"末棒之前"那个状态造出来，
+    再删它的交接单。判别 = "我这条测试，会不会因为'我把该做的事做完了'而变红？"——会，就构造它。
     """
 
+    _set_milestone_pending(sandbox, 6)
     next_handoff = _next_handoff(sandbox)
     (sandbox / "plan" / next_handoff).unlink()
     code, out = _run_gate(sandbox)
@@ -302,8 +326,14 @@ def test_m10_done_without_release_doc_is_red(sandbox: Path):
 
 
 def test_release_not_applicable_before_milestone_done(sandbox: Path):
-    """正向：M6 未完成时该判据 PASS 并写明不适用（不是假绿）。"""
+    """正向：M6 未完成时该判据 PASS 并写明不适用（不是假绿）。
 
+    **状态必须显式构造**（M6 收尾实测）：沙箱拷的是真实仓库文件，M6 翻 ✅ 之后"未完成"这个前提
+    就不存在了，这条测试自己变红——它测的是"任务还没做"，不是门的模式语义。
+    处置 = 先在沙箱里把 M6 标回未完成（与 `test_m4_delete_next_handoff_is_red` 同一个 helper）。
+    """
+
+    _set_milestone_pending(sandbox, 6)
     code, out = _run_gate(sandbox)
     assert code == 0
     assert "收尾记录尚不适用" in out

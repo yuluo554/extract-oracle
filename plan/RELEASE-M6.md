@@ -93,23 +93,27 @@
 
 ## 二、tag 后追加事实
 
-> **占位骨架**（tag 树内形态）：下表**列名固定、值留空**——自指约束下，这些字面值只能在 tag **之后**的
-> 追加提交里登记（tag 树不变 → 附件字节不变 → 值不会失效）。
-> **不许**把本节的空值当成"漏填"而回填进 tag 树（那正是自指陷阱的复发形态）。
+> **两段形态**（自指约束下的写法）：**本文件在 tag 树里的那一版，本节是列名固定、值留空的占位骨架**
+> ——字面值只能在 tag **之后**的追加提交里登记（tag 树不变 → 附件字节不变 → 值不会失效）。
+> 当前你读到的是 **tag 之后的那一笔追加提交**，所以下表**已经填上实值**。
+> **不许**把下表的值搬回 tag 树那一版（那正是自指陷阱的复发形态）。
 
-| 项 | 值 | 登记时点 |
+| 项 | 值 | 核对命令 |
 |---|---|---|
-| tag 名 / 类型 | `v1.0.0` / annotated | 见 `git cat-file -t v1.0.0` |
-| tag 对象 OID | 见 `git rev-parse v1.0.0` | tag 后提交 |
-| tag 指向的 commit | 见 `git rev-parse v1.0.0^{commit}` | tag 后提交 |
-| tagger 身份 / 邮箱 | 见 `git cat-file tag v1.0.0`（须为 noreply 邮箱，脱敏面） | tag 后提交 |
-| 远端 annotated tag 两端一致 | 见 `gh api …/git/ref/tags/v1.0.0` 的 `object.sha` 与本地对账 | tag 后提交 |
-| 附件清单与 sha256 | 逐行 `sha256: <hex>  <name>`（Release 正文同步登记） | tag 后提交 / Release 正文 |
-| 回下载对账 | `gh release download` → sha256 复算 + `cmp` + 中立目录原生冒烟 | tag 后提交 |
-| 干净 clone 直跑 | 从 tag `git clone --no-local` → 中性目录跑 CLI（DoD ⑤） | tag 后提交 |
-| CI run 台账（首推 + tag 两条 run） | 逐行 `<sha>  event=…  run=<id>  conclusion=…`，**快照式：登记到 `<sha>` 为止**，其后纯文档提交恒 1 push = 1 run，是否仍绿看 GitHub 上该 sha 的 run | 首推后回填 |
-| 未验证项回填 | `plan/05` §五 U1 / U9 / U10 的真实 run 结果 | 首推后回填 |
-| POST_TAG 声明 | "tag 之后只有追加类提交，`git log --oneline v1.0.0..HEAD` 可逐条核对；交付面（`src/` `scripts/` `data/fixtures`）**零差异**" | tag 后提交 |
+| tag 名 / 类型 | `v1.0.0` / **annotated** | `git cat-file -t v1.0.0` → `tag` |
+| tag 对象 OID | `6d11592c6d0fbc6755b6fa29bf31edc0ff967295` | `git rev-parse v1.0.0` |
+| tag 指向的 commit | `806d074af15463c4f328fd3e77f452a3bfe464d2` | `git rev-parse v1.0.0^{commit}` |
+| tagger 身份 / 邮箱 | `yuluo554 <282769740+yuluo554@users.noreply.github.com>`，`2026-10-21T01:18:23Z`（`+0800`） | `git cat-file tag v1.0.0`；邮箱为 **noreply**（脱敏面通过） |
+| 远端 annotated tag 两端一致 | 本地 `6d11592c…` == 远端 `refs/tags/v1.0.0` 的 `object.sha` `6d11592c…`（**对象哈希一致**，不是只对 `^{commit}`） | `gh api repos/…/git/ref/tags/v1.0.0` |
+| 附件清单与 sha256 | `sha256: 42797dc77dab297939879e78935455c4d6bda41d4c2a12868fc78af025cda36a  extract-oracle.exe`<br>`sha256: fc0e2de675f83d625737b3766b228630e7a00c5fb9390fa39aba136153a597a2  extract-oracle-1.0.0.tar.gz` | `sha256sum` 两条；**Release 正文同步登记同一组值** |
+| 回下载对账 | `gh release download v1.0.0` 取回两件 → sha256 复算**与上表逐字节相同** → `cmp` 与本地留档件一致（两件都 `CMP OK`）→ 下载件在**中立目录**原生冒烟：`--version`=0 / `capabilities`=0（五模块 implemented）/ `inspect`=0 / `check clean.zip`=0 / `check case.zip`=**1**（`collision.CASEFOLD`、`survivor=README.TXT`、`table_simulated`）/ `platforms --verify`=0 | 见左列命令 |
+| 源码包正证（不依赖写死值） | 从 tag 重新 `git archive --format=tar --prefix=extract-oracle-1.0.0/ v1.0.0 \| gzip -9n` → 与**下载件** `cmp` **逐字节一致** | 已在本地实跑（两次重导出也互相 `cmp` 一致） |
+| 附件 vs tag 树（共有文件逐字节） | 下载的源码包解包树 vs **干净 tag 导出**：**共有 139 个文件、sha256 全等、两侧"仅一侧"集合均为空**（非空自证成立） | 见左列口径；**不用 `diff -r`**（两棵树本来不同构的判据修正） |
+| 干净 clone 直跑（DoD ⑤） | `git clone --no-local --branch v1.0.0` → `--version` = `extract-oracle 1.0.0`；全量测试 **399 passed / 10 skipped**（跳过的是"产物不在树里"的交付态 e2e，设计如此）；布局门全绿 / 脱敏门 0 命中 / `gen_fixtures --check` 逐字节一致 | 已在干净 clone 里实跑 |
+| 发布包实测（解包树跑 README 命令） | 解包源码包 → 在**解包目录之外**用 `python -m extract_oracle` 逐条跑：`--version` / `capabilities` / `inspect` / `check`（退 0）/ `platforms --verify` 全部通过；解包树里 `pytest` **399 passed / 10 skipped**；三门全绿；`check_publish_ready.py` 在无 `.git` 树里报**环境缺失退 3**（设计如此，见 `§三` A 组同条） | 已实跑 |
+| CI run 台账（快照式，登记到 `806d074` 为止） | `c79752ee0222  event=push branch=main  run=39523836893  failure`（首推首轮，五组缺陷）<br>`7289f3d6ce62  event=push branch=main  run=39525539941  failure`（复跑轮，1 格：版本分派判据写错）<br>`806d074af154  event=push branch=main  run=39526198978  **success**`（8/8 job）<br>`806d074af154  event=push branch=v1.0.0  run=39526542472  **success**`（tag run，同 sha 两条合法）<br>**终止符**：登记到 `806d074` 为止；其后纯文档提交恒 1 push = 1 run，是否仍绿看 GitHub 上该 sha 的 run，**不看本表行数** | `gh run list --json databaseId,headSha,event,headBranch,conclusion` |
+| 未验证项回填 | `plan/05` §五 **U1**（已实跑，首轮红 → 逐格定性在 §5.1）、**U9**（Ubuntu/macOS 六格已实跑）、**U10**（3.9 通道已实跑，且**证伪过**两处写法）——三条全部关闭 | `plan/05` §五 同名行 |
+| POST_TAG 声明 | "tag 之后只有追加类提交，`git log --oneline v1.0.0..HEAD` 可逐条核对；交付面（`src/` `scripts/` `data/fixtures`）**零差异**"——本笔提交即首条追加（`plan/` 与 `docs/` 面），交付面按 `git -c core.quotepath=false diff --name-only v1.0.0..HEAD -- src/ scripts/ data/fixtures` **为空** | 见左列命令 |
 
 ---
 
@@ -126,7 +130,7 @@
 | 入仓工具在无 `.git` 树里也要能跑 | 实现 | 布局门 / 脱敏门 / `gen_fixtures.py` / `probe_tools.py` 只读仓库内文件、不读 git 元数据（`§一` §1.3 逐条实跑）。**例外并显式声明**：`check_publish_ready.py` 与 `bootstrap_remote.py` **刻意**依赖 git 元数据（P7/P8 与建仓），在无 `.git` 树里报**环境缺失退 3**——这是它们的设计定位（"能不能推"这件事本身以 git 仓库为前提），不是缺陷 |
 | 发布包实测 = 把 README 的每条命令在解包树里真敲一遍，包括前置条件 | 实现 | ① **parser 反射对账常驻**：`tests/test_readme_commands.py` 抽出 README 代码块里的每条 `extract-oracle …` → 逐条 `parse_args` → 任一 exit 2 即红（含多值参数三形态：单值 / 重复旗标 / 逗号分隔）；② README 的"开发/安装/打包/建仓"三节在**本机**逐条真敲过（`§一` §1.2）；③ **tag 树解包**侧（`git clone --no-local --branch v1.0.0` → 逐条敲，含"前置条件 = 先 `pip install -e .`"）在 `§二` 登记 |
 | tag 树内留档与 tag 自身事实是自指关系 → `§三` 必须写占位骨架 | 实现 | 本文件：`§一` **零** OID/sha256 字面值；`§二` 是明示占位骨架并写明约束（`§一` 头部与 `§二` 头部各一处，防下一棒"好心补上"） |
-| 附件与 tag 树逐字节同源 | 待首推 | 判据不用 `diff -r`（两棵树**本来不同构**：源码包独有 `PKG-INFO`/`*.egg-info`，`git archive` 独有 `.gitignore`/`.github/`）。用 `§一` §1.5 的两条正证：**从 tag 重导出源码包 → `cmp` 下载件逐字节一致** + **从 tag 重构建 `.exe` → 结构口径比对**；两条都在 `§二` 登记结果 |
+| 附件与 tag 树逐字节同源 | 实现 | 判据不用 `diff -r`（两棵树**本来不同构**：`git archive` 独有 `.gitignore`/`.github/`，而 sdist 才有 `PKG-INFO`/`*.egg-info`）。用两条正证，**都已在 `§二` 登记实值**：① **从 tag 重导出源码包 → `cmp` 下载件逐字节一致**（两次重导出互相也一致）；② **下载的源码包解包树 vs 干净 tag 导出：共有 139 个文件、sha256 全等、两侧「仅一侧」集合均为空**。`.exe` 侧只做**结构口径**比对（同机重建可比 sha256；换机构建因 PE 时间戳必然不同，见 U5） |
 | 源码包要自足（`MANIFEST.in` 白名单覆盖数据目录；验证 = 解包 → 装 → 从解包目录之外跑 CLI） | 实现 | **不适用 sdist 那一半**（附件是 `git archive` 出的 tag 树快照，不是 `python -m build` 的 sdist，无 `MANIFEST.in`）。**自足性本身**实现：`git archive` 是 tag 树的**完全快照**（含 `src/` `data/` `pyproject.toml` `README.md` `docs/`），解包 → `pip install` → 从中立目录跑 CLI 的实测在 `§二` 登记 |
 | 构建必须排在交付面定稿之后（README/pyproject 会进包） | 实现 | `§一` §1.2 的六步顺序：交付面落定 → 重生成样例 → 全量测试 → **构建** → 中立冒烟。README 状态行在**定版提交里就写对**（只写**版本 + 能力**，`v1.0.0` 由 `tests/test_readme_commands.py::test_readme_status_line_carries_the_current_version` 断言）；"是否已发布 / CI 是否绿"**不由随包 README 承载** |
 | README 提到的附件名必须真在 Release 里 | 不适用 | README **不点名任何附件名**（无可推导之名，故无"产物名由 setuptools 规范化"那类风险）。附件名在 `§二` 登记后逐条核对存在 |
@@ -150,11 +154,11 @@
 | 版本号"多处一致"要由机器断言，别靠手抄 | 实现 | 四处的落法：① `pyproject.toml` 走 `dynamic = ["version"]` + `attr = "extract_oracle.__version__"`（`check_publish_ready.py` P6 断言**无字面量版本**）；② 根模块声明 `__version__`；③ **产物自报** = `scripts/build.py` 自检 + `tests/test_artifact_e2e.py::test_artifact_version_is_the_single_source_of_truth`（断言 `extract-oracle {__version__}`）；④ **README 状态行**含 `v{__version__}`（`tests/test_readme_commands.py::test_readme_status_line_carries_the_current_version`）。tag 名与 Release 名 tag 后才存在 → 归 `§二` |
 | 已发布窗口关闭后的缺陷处置（不重写 tag，走追加提交 + 登记） | 不适用 | 本轮**未出现**"发布后发现的缺陷"，故无处置对象。规则本身已备好：`§二` 的 POST_TAG 声明栏 + `§一` §1.6 两条"发布前发现并修掉"的缺陷记录（发布前修，不涉及重打） |
 | DoD 打勾只能在事实落地后 | 实现 | tag 树内四份状态副本的 **M6 = ⬜**（`§一` §1.4）；翻 ✅ 归 `§二` 的追加提交 |
-| 随包 README 的状态行不要承载"发布到哪一步" | 实现 | 走模板给的第①条口径：README 状态行 = **版本 + 能力**（`v1.0.0 — M6 发布（五模块全部落地…）`），"是否已发布"交 Release 页与 `plan/`。**如实留档一处落后**：tag 树里的 README 仍写着"未接远端，待首推验证"——那是**tag 时点的真实状态**，首推后由 `§二` 登记（不就地美化） |
+| 随包 README 的状态行不要承载"发布到哪一步" | 实现 | 走模板给的第①条口径：README 状态行 = **版本 + 能力**（`v1.0.0 — M6 发布（五模块全部落地…）`），"是否已发布"交 Release 页与 `plan/`。**如实留档一处落后**：tag 树里的 `AGENTS.md` / `plan/00` 仍写着「未接远端，CI 待首推验证」——那是**tag 时点的真实状态**（当时确实未首推）；首推后由 tag 之后的追加提交更新，**不回填 tag 树** |
 | 定版会改变"参与摘要的指纹字段" → 样例必须同轮重生成 | 实现 | 定版提交里重跑 `gen_fixtures.py --check` → 22/22 逐字节一致（`data/fixtures` 与 `data/tool-matrix/` 都**不含**工具版本串，核对过：矩阵带的是 `schema_version` 与四工具自报版本）。**唯一一处版本指纹在报告面**（`tool_version`），本项目**没有入仓的报告样例**（`tests/test_report_determinism.py` 用的是内存构造的 payload，且 `tool_version` 已改为读根模块）→ 无"已入仓样例摘要失效"这一类对象 |
-| `POST_TAG` 的处置 = 声明 + 可核对，不是消除 WARN | 待首推 | 声明文本已写进 `§二`（"tag 之后只有追加类提交…交付面零差异"），首推后按实况核对并登记 `git log --oneline v1.0.0..HEAD` |
+| `POST_TAG` 的处置 = 声明 + 可核对，不是消除 WARN | 实现 | 声明写进 `§二`，并**按实况核对**：`git log --oneline v1.0.0..HEAD` 逐条可读；`git -c core.quotepath=false diff --name-only v1.0.0..HEAD -- src/ scripts/ data/fixtures` **为空**（交付面零差异）。本笔提交即首条追加（`plan/` + `docs/` 面），提交信息用「复盘 / 复跑轮修复 / 回填」这类语义词 |
 | 发布门报红先看它读的是 tag 树还是工作树 | 不适用 | 本项目**没有**"读 tag 树"的发布门：`check_publish_ready.py` 只判**工作树 + 本地完整仓库**（P7/P8），并**刻意不进 CI**（浅克隆下 P7/P8 会翻转）；tag 侧事实由本留档 `§二` 手工登记，不经过门 |
-| annotated tag 两端一致 = **对象哈希**一致 | 待首推 | 本地 `git tag -a v1.0.0` 后对账远端 `git/ref/tags/v1.0.0` 的 `object.sha`（不是 `^{commit}`）；逐字节还原原始 tag 对象的做法与结果在 `§二` 登记 |
+| annotated tag 两端一致 = **对象哈希**一致 | 实现 | 本地 `git rev-parse v1.0.0` = `6d11592c…` == 远端 `refs/tags/v1.0.0` 的 `object.sha`（**不是** `^{commit}`：那个是 `806d074a…`）；tagger 与消息在 `§二` 逐项登记（邮箱为 noreply） |
 | tag 之后只允许**非交付面**提交（拆两条判据） | 实现 | ① `POST_TAG_SCOPE`：改动集合 ⊆ 非交付面（`plan/` `tests/` `tools/` `docs/` `README` `AGENTS` `.github/`）；② `DELIVERABLE_UNCHANGED`：交付面前缀（`src/` `scripts/` `data/fixtures`）**零差异**。两条都在 `§二` 用 `git -c core.quotepath=false diff --name-only v1.0.0..HEAD` 逐行核对（`core.quotepath=false` 防中文路径八进制转义击穿白名单判定）。tag 树内已按此纪律冻结交付面 |
 
 ### D. CI 与对账
@@ -167,7 +171,7 @@
 | CI 内联脚本优先落 `tools/` 脚本（heredoc 终止符 + 工作流文件 LF） | 实现 | 六个冒烟步是 `run: \|` 内联 bash，**不含 heredoc**（无终止符歧义）；工作流文件为 LF（`.gitattributes` 口径）。判定入口本身是交付态 CLI + `tools/` 里的门与生成器，没有"内联脚本里藏着唯一实现" |
 | 每条已交付命令都要有一条离线 CI 冒烟 | 实现 | 四个子命令各有着落：`capabilities` / `inspect` → `Console script smoke`；`check` → 五个判定冒烟（structure / fold / accessibility / encoding / container+budget）；`platforms --verify` → `fold smoke` 末条；**产物形态** → 新 `single-file-artifact` job。台账见 `plan/05` §五 U1 |
 | "能力缺失"的降级冒烟不许用 PATH 隔离伪造缺失 | 实现 | 本项目**不用 PATH 隔离**：`tests/test_cli_contract.py` 用**注入式**变异（把 `capabilities.MODULES` 与 `cli.MODULES` 一起翻回 False）证明"缺模块 → 退 3 且不产空 findings"；工具缺失侧用显式开关 `ORACLE_REQUIRE_TOOLS=1`（缺失即失败，不 skip 成假绿） |
-| tag push 与 branch push 各一条 run（同 sha 两条合法，tag run 也必须绿） | 待首推 | 见 `§二` 台账与终止符 |
+| tag push 与 branch push 各一条 run（同 sha 两条合法，tag run 也必须绿） | 实现 | 同一 sha `806d074af154` 上两条 run：`branch=main run=39526198978 success` + `branch=v1.0.0 run=39526542472 success` —— **两条都绿**；台账与终止符在 `§二` |
 | CI 检出形态会让"标注 tag 对象"整类不存在 | 实现 | **不把这类推到 CI**：tag 对象（tagger 邮箱属脱敏"提交元数据面"）在**本地**对账，结果写进 `§二`——这正是本条给的出路（"或在留档里如实写'本地验的'"） |
 | 推送前先在本地 `yaml.safe_load` 解析 workflow 并断言 job/step 数 | 实现 | `yaml.safe_load` 实跑：**3 job / 5 + 14 + 5 steps**（`gate` / `test` / `single-file-artifact`），step `name` 无裸 `: `（那会让 GitHub 不建 job） |
 
@@ -180,7 +184,7 @@
 | 门的结果会被"为满足它而写入的产物"改变（别把门结论写死在留档/HANDOFF） | 实现 | `§一` §1.3 的表头与脚注都写明"**这组数字是在留档已入库的那棵树上测的**"，并给出"提交后重跑、以实测为准、不就地美化"的处置；HANDOFF/计划侧对应的是 `plan/05` §五 U1 的"待首推 + 首推后回填"口径（不写死 run 数）。`LAYOUT.RELEASE` 的靶子本轮最后一次用**真实留档**跑（见 `plan/05` §3.1 M6 复跑记） |
 | 门读"人写的文档"时，作者为读者写的样例行会被当成真值登记 | 不适用 | 本项目的门**不解析留档里的登记行**：`LAYOUT.RELEASE` 只数"含实现/不适用/待首推的行数"、只匹配两个标题小节；`check_publish_ready.py` 不读 `plan/` 的登记内容。故"样例行被登记"这一类无对象 |
 | 门要自己数「这轮扫到了几个」 | 实现 | 三门的非空跑自证都进结论：布局门 `文档 10 / 交接单 6 / 状态副本 4 / 文档点名工具 7`；脱敏门 `扫了 120 个文本文件，0 命中（豁免 1 份）`；发布就绪门 `跟踪文件 136 / 判据 8` |
-| `gh` 是原生程序，`/tmp/...` 路径它不认（`--notes-file` / 附件参数要 Windows 形态） | 待首推 | 实测坑已登记进 `AGENTS.md` 环境事实（"`/tmp` 与 `$TEMP` 不是同一处"同族）；Release 的 `--notes-file` 与附件路径一律给 `gh` **原生 Windows 路径**（`cygpath -w` 转过的形态），结果与踩坑在 `§二` 登记 |
+| `gh` 是原生程序，`/tmp/...` 路径它不认（`--notes-file` / 附件参数要 Windows 形态） | 实现 | **实测踩到两次**：① `gh release download --dir <MSYS 形态路径>` 失败并报 `failed to run git: fatal: not a git repository`（它把该路径当仓库解析）；处置 = 从**仓库根**发起并给原生路径。② `gh release create` 的 `--notes-file` 与两个附件参数一律给**原生 Windows 形态**（`D:/…`），创建成功并回显 URL。两条都写进 `AGENTS.md` 环境事实（与「`/tmp` 与 `$TEMP` 不是同一处」同族） |
 | 常驻测试要能"构造缺件态"（否则测的是瞬态） | 实现 | 四处 seam：`tests/test_artifact_e2e.py` 的 `ORACLE_REQUIRE_ARTIFACT=1`（产物缺失 → 失败；不设 → 响亮 skip）；`tests/test_tool_behaviour.py` 的 `ORACLE_REQUIRE_TOOLS=1`；`tests/test_publish_ready.py` 用**临时 sandbox 仓库**构造"dist/ 被跟踪""`.gitignore` 规则被删"等缺件态；**本轮补的第四处** = `tests/test_layout_gate.py::test_m10`——它原先靠"仓库里**没有**留档"表达缺档态，留档一落盘**这条测试自己变红**（测的是"任务还没做"，不是门的模式语义），改为在沙箱里**显式删掉**留档并加"缺件态自证"断言（`§一` §1.3 脚注同一条） |
 | 发布门的判据要按"真实发布动作序列"设计 | 实现 | `bootstrap_remote.py` 的判据 = **远端 sha == 本地 sha**（不是 `git push` 的退出码，K12）；`tests/test_publish_ready.py` 11 组变异按真实形态构造。**首推已按真实序列走通**（建仓 → 首推 → sha 对账），首轮随即暴露"`bootstrap_remote.py` 的 push 判据是对的、但**推送通路**在本机不可用"这一环境事实（见下条），处置见 `§二` |
 | "发布未达成"与"环境缺失"必须是两个退出码语义 | 实现 | `check_publish_ready.py`：`0` 全绿 / `1` 有 FAIL / `3` 非 git 工作树或无 git 可执行。`bootstrap_remote.py` 同族（缺 `gh`/未登录 = 环境缺失；远端 sha 不符 = 未达成）。两者都不把"事情没做完"报成"这台机器做不了" |

@@ -6,9 +6,9 @@
 - 交付形态（唯一）：**单文件可执行 + 纯本地 CLI**（只读归档、零网络、零解压到磁盘、零运行时依赖）
 - 定位宣言："现有工具只做**单条规则检查**或**字段转储**，没有一个输出**谁会写出什么名字、谁覆盖谁、哪个工具会拒绝**。本工具是**提取结果预言机**：输入一个 ZIP/TAR，逐条目预言它在 {Windows 资源管理器, Info-ZIP unzip, 7-Zip, libarchive, Python zipfile, macOS Finder, Linux} 上会变成什么名字、是否被覆盖、是否应用层不可见、是否被拒绝。**提取预言机不是体检器。**"
 - 基准日：**2026-10-21**；代理实际检索窗口 **2026-10-19T18:35Z–19:10Z**（`data/README.md` §1 已原样记录）
-- 当前状态：**M6 发布**（`docs/divergence.md` 定稿：22 份 fixture × 4 工具 = 88 格逐格命令与输出节选；`__version__` 定版 **1.0.0**；`dist/extract-oracle.exe` 出产物并**自带平台表**，仓库外中立目录四条命令实跑通过；`plan/RELEASE-M6.md` **在 tag 之前落盘**）
+- 当前状态：**M6 发布完成（项目收尾）**——公开仓 `yuluo554/extract-oracle`，tag **v1.0.0**（annotated）+ Release 附 `extract-oracle.exe` 与源码包；`docs/divergence.md` 定稿（88 格）；`__version__` = **1.0.0**；产物**自带平台语义表**；CI **8/8 job 全绿**（三平台 × 3.9/3.12 + 产物 job）。**M6 是最后一个里程碑，无下一棒交接单**
 - **可上传状态**：发布就绪门（`py -3.12 tools/check_publish_ready.py`）8 条判据全绿，含 `git bundle verify` 推送包自证 → **仓库本身现在就能推**；对外动作序列（建仓 → 首推 → tag → Release）见 `plan/05` §四，**已获用户显式确认后执行**
-- CI 状态：见下文（首推前 = `plan/05` §五 U1 的"待首推"口径；首推后 = §五 U1 回填的真实 run 台账）
+- CI 状态：**已实跑并全绿**（2026-10-21）——首推首轮红（五组缺陷，逐条定性在 `plan/05` §5.1）、复跑轮 7/8、第三轮 **8/8 全绿**；run 台账与终止符在 `plan/RELEASE-M6.md` §二
 
 ---
 
@@ -91,14 +91,14 @@
 | 容器约定检查 | EPUB 3.3 §4.3.2/4.3.3、ODF 1.2 part 3 §3.3 | `container.*` 五条 | 四 mimetype fixture 各命中一 code，普通 ZIP 零误报 | ✅ M5 落地（`tests/test_container.py` 20 条：四样本各命中一条且互不串报 + `clean.zip` 零误报 + ODF 上下文 `inferred` 现造样本验证；口径在 §4.5 / 形状在 §4.13） |
 | 长度预算 | Windows 260/32767、Linux `PATH_MAX`/`NAME_MAX` | `budget.*` | 两 fixture 分别命中 | ✅ M5 落地（`tests/test_budget.py` 16 条：`PATH_OVER_260` 与 `COMPONENT_OVER_255` 各命中 + 260 是**预算告警**非截断（U12）+ 按组件切（U19）+ Linux 按字节 / Windows 按码元） |
 | 只读零解压 | 形态本身 | 全部判定基于字节读取 | 测试断言：运行期间不产生解压目录（除测试临时目录） | ✅ M2 落地：判定层纯函数，`zip_reader` 只 `read_bytes`；工具行为测试的产物只在 `tmp_path` |
-| 零网络 | 形态本身 | 无 http 客户端依赖 | 静态扫描（无网络库导入）+ 断网 e2e | ✅ M2 落地：`tests/test_rule_boundaries.py::test_no_network_imports_in_any_module`（断网 e2e 仍待首推后补） |
+| 零网络 | 形态本身 | 无 http 客户端依赖 | 静态扫描（无网络库导入）+ 断网 e2e | ✅ M2 落地：`tests/test_rule_boundaries.py::test_no_network_imports_in_any_module`。**交付态另证**：`dist/extract-oracle.exe` 在仓库外中立目录、无任何配置的情况下跑通五条命令（含 `platforms --verify`）——产物不需要网络也不读仓库，见发布留档 §二 |
 | 确定性导出 | 报告模块 | JSON/文本双导出 | 同输入双跑 byte 级一致（无时间戳/随机 ID/绝对路径） | ✅ M5 落地：M5 三个新面（`encoding[]` / `container` 块 / `budget.*`）已纳入 `tests/test_report_determinism.py` 的双跑比对，另有五模块齐备时的整份报告双跑 |
-| 单文件可执行 | `scripts/build.py`（PyInstaller onefile） | `dist/extract-oracle.exe` | 干净环境直跑 + 交付态 e2e | ⬜ 待 M6 实现 |
+| 单文件可执行 | `scripts/build.py`（PyInstaller onefile，**平台表随包分发**） | `dist/extract-oracle.exe` | 干净环境直跑 + 交付态 e2e | ✅ M6 落地（`tests/test_artifact_e2e.py` 10 条对**产物**跑；中立目录四条命令 + `platforms --verify` 实跑；Release 附件回下载后 sha256 + 原生冒烟复验，见发布留档 §二） |
 | 规则原句文档 | 规范原文逐条核对 | `docs/rules.md` | 每条规则带 URL 与原句，可逐条回到来源 | ✅ M4 定稿：15 行全部直引（原 14 行 + 新增 POSIX `Filename` 行）；反查表逐规则一个 `#` 行号；两处依据出处已更正（见该文件 §五） |
-| 四工具分歧对照 | 本机实测命令与输出 | `data/tool-matrix/*.json`（中间产物）→ `docs/divergence.md` | 每格附实测命令与输出节选；可重跑脚本重跑一致 | 🟡 已落 22×4 格；M6 定稿 |
+| 四工具分歧对照 | 本机实测命令与输出 | `data/tool-matrix/*.json`（中间产物）→ `docs/divergence.md` | 每格附实测命令与输出节选；可重跑脚本重跑一致 | ✅ M6 定稿（88 格逐格命令 + 退出码 + 落盘名 + 输出节选；`probe_tools.py --check` 逐字节一致；含两处实测收窄与两处平台/版本注记） |
 | fixture 生成器 | `struct.pack` 程序化构造 | `tools/gen_fixtures.py` | 重跑逐字节一致；不含真实用户文件 | ✅ 22/22 份（M1） |
 | 方法论装订 | `AGENTS.md` + 布局门 + 脱敏门 + `plan/00` 顶部一行 | `tools/check_sprint_layout.py` / `tools/check_desensitized.py` | 布局门全绿 + 变异逐组变红（`tests/test_layout_gate.py`） | ✅ |
-| **可上传 GitHub** | 仓库结构 + 门 + 建仓脚本 | `tools/check_publish_ready.py`（P1–P8）/ `tools/bootstrap_remote.py` | 发布就绪门全绿（含 `git bundle verify` 推送包自证）+ 11 组变异逐组变红 | ✅（**仓库本身可推**；远端尚未创建，见 `plan/05` U1） |
+| **可上传 GitHub** | 仓库结构 + 门 + 建仓脚本 | `tools/check_publish_ready.py`（P1–P8）/ `tools/bootstrap_remote.py` | 发布就绪门全绿（含 `git bundle verify` 推送包自证）+ 11 组变异逐组变红 | ✅ M6：**已建仓并发布**（`yuluo554/extract-oracle` 公开仓；tag `v1.0.0` + Release 附两件；run 台账与附件 sha256 见发布留档 §二） |
 
 ---
 
@@ -152,7 +152,7 @@
 | **M3 折叠** | MOD-3：平台表接入 + `collision.*` 四条 + 写序→存活者 | `case.zip` 存活者正确；`norm.zip` 分平台结论正确；8 组字符对回归全通过 | ✅ |
 | **M4 可访问性** | MOD-4 三级分级 + `docs/rules.md` | `CON.txt`→`WRITTEN_UNREADABLE` 附三证据；`trailing.`→`WRITTEN_TRUNCATED`；保留名边界全绿；每条规则可回原句 | ✅ |
 | **M5 容器与编码** | MOD-5 容器/预算 + MOD-2 收尾（编码推断与 0x7075 全量）+ 确定性导出 | 四 mimetype fixture 各命中一 code；`zh_gbk.zip`/`upath.zip` 预测与实测一致；双跑 byte 级一致 | ✅ |
-| **M6 发布** | GitHub 公开仓库发布 | **① `git tag v1.0.0`（annotated）；② GitHub Release 附产物**（`dist/extract-oracle.exe` + `git archive` 出的确定性源码包，本地留副本并记 sha256）；**③ 发布留档 `plan/RELEASE-M6.md` 在 tag 之前落盘**（分"tag 时点事实 / tag 后追加事实"两栏，§三 = 阶段 7 出口门覆盖对账）；④ `docs/divergence.md` 定稿（22×4 格逐格命令 + 输出节选）；⑤ 干净 clone + 干净环境直跑通过；⑥ 单文件可执行**自带平台语义表**（中立目录 `platforms --verify` 退 0） | ⬜ |
+| **M6 发布** | GitHub 公开仓库发布 | **① `git tag v1.0.0`（annotated）；② GitHub Release 附产物**（`dist/extract-oracle.exe` + `git archive` 出的确定性源码包，本地留副本并记 sha256）；**③ 发布留档 `plan/RELEASE-M6.md` 在 tag 之前落盘**（分"tag 时点事实 / tag 后追加事实"两栏，§三 = 阶段 7 出口门覆盖对账）；④ `docs/divergence.md` 定稿（22×4 格逐格命令 + 输出节选）；⑤ 干净 clone + 干净环境直跑通过；⑥ 单文件可执行**自带平台语义表**（中立目录 `platforms --verify` 退 0） | ✅ |
 
 > DoD 口径写死为 **A) Release 附产物**（≥1 个手工上传附件，本地留副本 + sha256）。里程碑表的 DoD 列**只能加不能减**；任何裁剪必须在 §二 决策记录留一行理由。
 

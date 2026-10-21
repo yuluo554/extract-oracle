@@ -13,6 +13,7 @@ py -3.12 tools/check_desensitized.py
 - 接手对话（无 HANDOFF）：先读 `plan/00`、`plan/05`、`plan/06` 与各 HANDOFF，重建"当前状态 + K 口径清单"再动手。
 - **门不存在 = 本项目没装订** → 先补第零步三件（本文件 + 布局门 + `plan/00` 顶部一行），再做别的。
 - **要推 GitHub 之前**：`py -3.12 tools/check_publish_ready.py` 必须全绿（它判"能不能推"，不判"发没发布"）。
+- **本项目已发布（v1.0.0）**：交付面（`src/` `scripts/` `data/fixtures`）**不得再改**；任何改动都要升版本号重发。
 
 ## 强制布局（布局门逐条断言，改动前先看这里）
 
@@ -45,7 +46,7 @@ py -3.12 tools/check_desensitized.py
   `tests/test_artifact_e2e.py::test_artifact_carries_the_platform_table` 变红——那是设计如此。
 - **stdout 的换行是 LF**（M6 实测补的口径）：`cli._force_lf_stdout()` 只改换行翻译、**不动编码**；
   别把"修复换行"写成"改 `PYTHONIOENCODING`"（那会让非 UTF-8 控制台上的中文表标签变乱码）。
-- CI 状态：**已首推首跑（2026-10-21）**，首轮红、五组缺陷全部照录并修复（`plan/05` §5.1）；逐轮 run 台账在发布留档 §二。
+- CI 状态：**已首推并全绿（2026-10-21）**——首轮红（五组缺陷照录，`plan/05` §5.1）、复跑轮 7/8、第三轮 8/8；run 台账在发布留档 §二。**M6 已收尾：项目无下一棒交接单**（`plan/HANDOFF-M6.md` 是最后一棒的交接单）。
 - **本机 `github.com:443` 不可达**（curl 21s connect timeout / `Recv failure: Connection was reset`；实测 2026-10-21），
   但 `api.github.com` / `codeload.github.com` / `uploads.github.com` / `ssh.github.com:443` / `github.com:22` 都可达。
   ⇒ `gh repo create`、`gh api`、`gh release create` 正常，**git over HTTPS 推不动** →
