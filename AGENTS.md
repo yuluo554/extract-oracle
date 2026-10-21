@@ -45,7 +45,11 @@ py -3.12 tools/check_desensitized.py
   `tests/test_artifact_e2e.py::test_artifact_carries_the_platform_table` 变红——那是设计如此。
 - **stdout 的换行是 LF**（M6 实测补的口径）：`cli._force_lf_stdout()` 只改换行翻译、**不动编码**；
   别把"修复换行"写成"改 `PYTHONIOENCODING`"（那会让非 UTF-8 控制台上的中文表标签变乱码）。
-- CI 状态：**未接远端，CI 待首推验证**（见 `plan/05` §五 U1）；发布留档 §二 登记首推后的真实 run 台账。
+- CI 状态：**已首推首跑（2026-10-21）**，首轮红、五组缺陷全部照录并修复（`plan/05` §5.1）；逐轮 run 台账在发布留档 §二。
+- **本机 `github.com:443` 不可达**（curl 21s connect timeout / `Recv failure: Connection was reset`；实测 2026-10-21），
+  但 `api.github.com` / `codeload.github.com` / `uploads.github.com` / `ssh.github.com:443` / `github.com:22` 都可达。
+  ⇒ `gh repo create`、`gh api`、`gh release create` 正常，**git over HTTPS 推不动** →
+  `origin` 用 SSH 形态（`git@github.com:<owner>/<repo>.git`）。换机器/换网络时**先复核这一条**再谈推送。
 
 ## 关键命令
 

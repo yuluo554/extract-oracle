@@ -62,10 +62,24 @@ def _fails(out: str) -> list[str]:
     return [line.split()[1] for line in out.splitlines() if line.startswith("FAIL")]
 
 
+def _write_lf(path: Path, text: str) -> None:
+    """显式 LF 写盘，**Python 3.9 兼容**。
+
+    为什么不用 `Path.write_text` 的 `newline=` 参数（写在这里会连注释一起被判据扫到，
+    所以刻意不写出完整调用式）：那个参数是 **3.10** 才加的，而本项目
+    `requires-python >= 3.9` —— CI 首推首跑实测：3.9 通道上 14 条测试报
+    `TypeError: write_text() got an unexpected keyword argument 'newline'`。
+    判别 = **"我用的是不是 3.9 就有的写法？"**（这是 `plan/05` §五 U10 从"未实跑"变成"实跑结论"的那一格）。
+    """
+
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+
+
 def _replace(path: Path, old: str, new: str) -> None:
     text = path.read_text(encoding="utf-8")
     assert old in text, f"变异锚点失配（变异没发生）: {old!r}"
-    path.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
+    _write_lf(path, text.replace(old, new, 1))
 
 
 @pytest.fixture()
@@ -116,7 +130,7 @@ def test_p4_host_path_is_red(sandbox: Path):
     # （否则"门比项目已声明的豁免更严 = 门错"会被反向滥用成"门给自己开后门"）。
     leak_text = "路径: " + "D:" + "/Program" + "Data/secret/x\n"
     leak = sandbox / "plan" / "LEAK.md"
-    leak.write_text(leak_text, encoding="utf-8", newline="\n")
+    _write_lf(leak, leak_text)
     subprocess.run(["git", "add", "-A"], cwd=sandbox, check=True)
     code, out = _run(sandbox, "--allow-dirty")
     assert code == 1
@@ -140,7 +154,7 @@ def test_p5_secret_forms_are_red(sandbox: Path):
     }
     for name, body in samples.items():
         path = sandbox / "plan" / name
-        path.write_text(body, encoding="utf-8", newline="\n")
+        _write_lf(path, body)
         subprocess.run(["git", "add", "-A"], cwd=sandbox, check=True)
         code, out = _run(sandbox, "--allow-dirty")
         assert code == 1, f"{name} 未触发 P5: {out}"
@@ -159,7 +173,7 @@ def test_p6_version_literal_is_red(sandbox: Path):
 
 
 def test_p7_dirty_tree_is_red_and_allow_dirty_downgrades(sandbox: Path):
-    (sandbox / "plan" / "WIP.md").write_text("wip\n", encoding="utf-8", newline="\n")
+    _write_lf(sandbox / "plan" / "WIP.md", "wip\n")
     code, out = _run(sandbox)
     assert code == 1
     assert "P7.CLEAN_TREE" in _fails(out)

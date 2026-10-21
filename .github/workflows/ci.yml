@@ -78,7 +78,11 @@ jobs:
         # 退出码是口径（`data/README.md` §4.1），所以这里显式断言它，不用 `|| true` 吞掉。
         shell: bash
         run: |
+          # GitHub 的 bash 默认带 `-e`：下面的 `out=$(… check …)` 命令**期望退 1**（判定产出），
+          # 在 `-e` 下会直接终止整个步骤（M6 首推首跑实测：Structure findings smoke 就是这样红的）。
+          # 本步骤自己收集失败并显式 `exit 1`，所以这里关掉 `-e`，只保留 `-u` 与 `pipefail`。
           set -uo pipefail
+          set +e
           fail=0
           for pair in \
             "mismatch_name.zip structure.NAME_DIVERGES" \
@@ -111,7 +115,11 @@ jobs:
         # 退出码是口径（`data/README.md` §4.1），所以这里显式断言它，不用 `|| true` 吞掉。
         shell: bash
         run: |
+          # GitHub 的 bash 默认带 `-e`：下面的 `out=$(… check …)` 命令**期望退 1**（判定产出），
+          # 在 `-e` 下会直接终止整个步骤（M6 首推首跑实测：Structure findings smoke 就是这样红的）。
+          # 本步骤自己收集失败并显式 `exit 1`，所以这里关掉 `-e`，只保留 `-u` 与 `pipefail`。
           set -uo pipefail
+          set +e
           fail=0
           for triple in \
             "case.zip windows collision.CASEFOLD" \
@@ -152,7 +160,11 @@ jobs:
         # 退出码是口径（`data/README.md` §4.1），所以这里显式断言它，不用 `|| true` 吞掉。
         shell: bash
         run: |
+          # GitHub 的 bash 默认带 `-e`：下面的 `out=$(… check …)` 命令**期望退 1**（判定产出），
+          # 在 `-e` 下会直接终止整个步骤（M6 首推首跑实测：Structure findings smoke 就是这样红的）。
+          # 本步骤自己收集失败并显式 `exit 1`，所以这里关掉 `-e`，只保留 `-u` 与 `pipefail`。
           set -uo pipefail
+          set +e
           fail=0
           for pair in \
             "reserved.zip windows WRITTEN_UNREADABLE" \
@@ -196,7 +208,11 @@ jobs:
         # 退出码是口径（`data/README.md` §4.1），所以这里显式断言它，不用 `|| true` 吞掉。
         shell: bash
         run: |
+          # GitHub 的 bash 默认带 `-e`：下面的 `out=$(… check …)` 命令**期望退 1**（判定产出），
+          # 在 `-e` 下会直接终止整个步骤（M6 首推首跑实测：Structure findings smoke 就是这样红的）。
+          # 本步骤自己收集失败并显式 `exit 1`，所以这里关掉 `-e`，只保留 `-u` 与 `pipefail`。
           set -uo pipefail
+          set +e
           fail=0
           # `upath.zip` 的 0x7075 CRC 有效 → 四工具一致 `café.txt`，无 finding（退 0）
           upath=$(extract-oracle check data/fixtures/upath.zip --target windows --module encoding)
@@ -232,7 +248,11 @@ jobs:
         # 退出码是口径（`data/README.md` §4.1），所以这里显式断言它，不用 `|| true` 吞掉。
         shell: bash
         run: |
+          # GitHub 的 bash 默认带 `-e`：下面的 `out=$(… check …)` 命令**期望退 1**（判定产出），
+          # 在 `-e` 下会直接终止整个步骤（M6 首推首跑实测：Structure findings smoke 就是这样红的）。
+          # 本步骤自己收集失败并显式 `exit 1`，所以这里关掉 `-e`，只保留 `-u` 与 `pipefail`。
           set -uo pipefail
+          set +e
           fail=0
           for pair in \
             "not_first.epub container.MIMETYPE_NOT_FIRST" \

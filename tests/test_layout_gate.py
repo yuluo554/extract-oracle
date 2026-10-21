@@ -17,6 +17,14 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 
 
+def _write_lf(path: Path, text: str) -> None:
+    """显式 LF 写盘，**Python 3.9 兼容**（`write_text` 的 `newline=` 参数是 3.10 才加的）。"""
+
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+
+
+
 def _run_gate(sandbox: Path) -> tuple[int, str]:
     proc = subprocess.run(
         [sys.executable, str(sandbox / "tools" / "check_sprint_layout.py")],
@@ -52,7 +60,7 @@ def sandbox(tmp_path: Path) -> Path:
 def _replace(path: Path, old: str, new: str, count: int = 1) -> None:
     text = path.read_text(encoding="utf-8")
     assert old in text, f"变异锚点失配（变异没发生，'仍绿'不能说明任何事）: {old!r}"
-    path.write_text(text.replace(old, new, count), encoding="utf-8", newline="\n")
+    _write_lf(path, text.replace(old, new, count))
     assert new in path.read_text(encoding="utf-8")  # 替代已生效
 
 
@@ -82,7 +90,7 @@ def test_m5_delete_binding_line_is_red(sandbox: Path):
     lines = path.read_text(encoding="utf-8").split("\n")
     kept = [line for line in lines if not re.match(r"^>.*ai-tool-project-sprint", line)]
     assert len(kept) < len(lines)
-    path.write_text("\n".join(kept), encoding="utf-8", newline="\n")
+    _write_lf(path, "\n".join(kept))
     code, out = _run_gate(sandbox)
     assert code == 1
     assert "LAYOUT.BINDING_HEAD" in _fails(out)
@@ -237,12 +245,12 @@ def _mark_release_done(sandbox: Path) -> None:
         path = sandbox / rel
         text = path.read_text(encoding="utf-8")
         text = re.sub(r"^(\|\s*\**M6\b[^\n]*?)\|\s*[^|]*\|", r"\1| ✅ |", text, flags=re.M)
-        path.write_text(text, encoding="utf-8", newline="\n")
+        _write_lf(path, text)
     for rel in ["plan/05-里程碑与发布.md"]:
         path = sandbox / rel
         text = path.read_text(encoding="utf-8")
         text = text.replace("| M6 | ⬜ | — |", "| M6 | ✅ | — |")
-        path.write_text(text, encoding="utf-8", newline="\n")
+        _write_lf(path, text)
     shutil.copy2(sandbox / "plan" / "HANDOFF-M1.md", sandbox / "plan" / "HANDOFF-M6.md")
 
 
@@ -250,7 +258,7 @@ def test_release_green_when_doc_has_both_columns_and_coverage(sandbox: Path):
     """正向对照：留档齐备时该判据本身必须 PASS（否则后面的"变红"可能只是恒红）。"""
 
     _mark_release_done(sandbox)
-    (sandbox / "plan" / "RELEASE-M6.md").write_text(RELEASE_DOC, encoding="utf-8", newline="\n")
+    _write_lf(sandbox / "plan" / "RELEASE-M6.md", RELEASE_DOC)
     _code, out = _run_gate(sandbox)
     assert "PASS  LAYOUT.RELEASE  两栏:True 覆盖对账小节:True" in out, out
 
@@ -258,7 +266,7 @@ def test_release_green_when_doc_has_both_columns_and_coverage(sandbox: Path):
 def test_m6_remove_coverage_section_is_red(sandbox: Path):
     _mark_release_done(sandbox)
     doc = RELEASE_DOC.split("## 三、")[0]
-    (sandbox / "plan" / "RELEASE-M6.md").write_text(doc, encoding="utf-8", newline="\n")
+    _write_lf(sandbox / "plan" / "RELEASE-M6.md", doc)
     code, out = _run_gate(sandbox)
     assert code == 1
     assert "LAYOUT.RELEASE" in _fails(out)
@@ -269,7 +277,7 @@ def test_m8_remove_tag_after_marker_is_red(sandbox: Path):
 
     _mark_release_done(sandbox)
     doc = RELEASE_DOC.replace("## 二、tag 后追加事实", "## 二、追加事实")
-    (sandbox / "plan" / "RELEASE-M6.md").write_text(doc, encoding="utf-8", newline="\n")
+    _write_lf(sandbox / "plan" / "RELEASE-M6.md", doc)
     code, out = _run_gate(sandbox)
     assert code == 1
     assert "LAYOUT.RELEASE" in _fails(out)

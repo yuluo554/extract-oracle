@@ -348,6 +348,17 @@ libfsapfs 的实现观察是"**大小写不敏感卷**先 lower-case"——即�
 | 数值格式 | 整数；不出现浮点；不定点舍入 | 避免跨语言格式化差异 |
 | 原子写 | 写临时文件 + `os.replace` | 中断不留半个产物 |
 
+> **"换行恒 `\n`"与"编码 UTF-8"的覆盖面（M6 收窄并扩展，`plan/05` §五 U23）**：本节的
+> "写盘只经 `write_atomic`"说的是**落盘路径**；但**默认输出路径（stdout/stderr）**同样在契约内——
+> 否则同一份报告"重定向到文件"与"`--out` 落盘"会给出不同字节，且字节形态随宿主 locale 变。
+> M6 由两条实测各抓出一半：**换行**（本机：Windows 上 `\n` 被翻成 `\r\n`）、**编码**
+> （CI 首推首跑：cp1252 控制台写中文表标签直接 `UnicodeEncodeError` 崩进程）。
+> 现由 `cli._configure_streams()` 把两个流固定成 **UTF-8 + LF + `errors="backslashreplace"`**
+> （`backslashreplace` 是兜底，保证**永不抛**）。靶子：
+> `tests/test_cli_contract.py::test_cli_output_is_utf8_even_when_host_console_cannot_encode_it`
+> （用 `PYTHONIOENCODING=cp1252` **伪造**宿主）与
+> `tests/test_artifact_e2e.py::test_artifact_json_is_byte_stable_across_two_runs`（产物态）。
+
 ### 4.9 `collisions` 输出形状（MOD-3 的唯一表述）
 
 > 与 `findings` 并列的第二个判定数组。字段集**新增即改本节**（同提交改 `findings.Collision.to_dict()`

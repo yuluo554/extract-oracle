@@ -20,6 +20,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import os
+
 import pytest
 
 from extract_oracle import platforms as platform_tables
@@ -32,6 +34,21 @@ from extract_oracle.rules import fold
 from extract_oracle.zip_reader import read_archive
 
 REPO = Path(__file__).resolve().parent.parent
+
+
+def _write_lf(path: Path, text: str) -> None:
+    """显式 LF 写盘，**Python 3.9 兼容**。
+
+    为什么不用 `Path.write_text` 的 `newline=` 参数（这里刻意不写出完整调用式）：
+    那个参数是 **3.10** 才加的，而本项目
+    `requires-python >= 3.9` —— CI 首推首跑实测：3.9 通道上 14 条测试报
+    `TypeError: write_text() got an unexpected keyword argument 'newline'`。
+    判别 = **"我用的是不是 3.9 就有的写法？"**（`plan/05` §五 U10 从"未实跑"变成"实跑结论"的那一格）。
+    """
+
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+
 FIXTURES = REPO / "data" / "fixtures"
 TRUTH = FIXTURES / "truth"
 PLATFORM_DIR = REPO / "data" / "platforms"
@@ -125,7 +142,7 @@ def test_illegal_source_value_is_refused(tmp_path):
 
     meta = json.loads((PLATFORM_DIR / "meta.json").read_text(encoding="utf-8"))
     meta["ntfs_upcase"]["source"] = "casefold"
-    (tmp_path / "meta.json").write_text(json.dumps(meta), encoding="utf-8", newline="\n")
+    _write_lf(tmp_path / "meta.json", json.dumps(meta))
     (tmp_path / "ntfs-upcase.bin").write_bytes((PLATFORM_DIR / "ntfs-upcase.bin").read_bytes())
 
     with pytest.raises(Exception) as excinfo:
@@ -626,7 +643,7 @@ def test_fold_entry_point_runs_in_subprocess(tmp_path):
         ],
         capture_output=True,
         text=True,
-        env=env,
+        env={**os.environ, **env},
         cwd=str(tmp_path),
     )
     assert proc.returncode == 1, proc.stderr  # 有冲突 → 1（不是 0）

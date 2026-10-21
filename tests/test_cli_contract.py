@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -280,8 +281,59 @@ def test_module_entry_point_runs(tmp_path):
         [sys.executable, "-m", "extract_oracle", "inspect", str(FIXTURES / "clean.zip"), "--format", "json"],
         capture_output=True,
         text=True,
-        env={**env},
+        env={**os.environ, **env},
         cwd=str(tmp_path),
     )
     assert proc.returncode == 0, proc.stderr
     assert json.loads(proc.stdout)["eocd"]["declared_entries"] == 2
+
+def test_cli_output_is_utf8_even_when_host_console_cannot_encode_it(tmp_path):
+    """`_configure_streams()` 的回归靶子：**伪造一个非 UTF-8 控制台**，输出仍必须是 UTF-8 且不崩。
+
+    实测来源（M6 首推首跑）：产物在 CI 的 Windows runner（cp1252 控制台）上跑
+    `platforms --verify`，报告里那张表带中文表标签，于是
+    `UnicodeEncodeError: 'charmap' codec can't encode characters` —— **进程直接崩**。
+    这不只是"显示不好看"：它让"报告的字节形态"取决于**宿主 locale**，与"同输入 → 同一输出"冲突。
+    修复 = `cli._configure_streams()` 把 stdout/stderr 固定成 UTF-8 + LF + `backslashreplace`。
+
+    这里用 `PYTHONIOENCODING=cp1252` **伪造**那个控制台（不看本机是什么控制台）——
+    判别 = **"我这条断言，在某个平台上会不会恰好恒真？"**：本机控制台是 cp936（能编码中文），
+    所以不伪造输入的话，这条断言在本机恒真、证明不了任何事。
+    """
+
+    env = {
+        **os.environ,
+        "PYTHONPATH": str(Path(__file__).resolve().parent.parent / "src"),
+        "PYTHONUTF8": "0",  # 逼它走 locale 默认（而不是 UTF-8 模式）——这才是 CI 上的真实形态
+        "PYTHONIOENCODING": "cp1252",
+    }
+    proc = subprocess.run(
+        [sys.executable, "-m", "extract_oracle", "platforms", "--verify"],
+        capture_output=True,
+        env=env,
+        cwd=str(tmp_path),
+    )
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", errors="replace")
+    text = proc.stdout.decode("utf-8")  # cp1252 的高位字节解不成 UTF-8 → 不修就会在这里炸
+    assert "platform tables verified" in text and "ntfs_upcase" in text
+
+    # 同一形态的第二处：`check` 的 JSON 面（`ensure_ascii=False`，条目名可能是中文）
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "extract_oracle",
+            "check",
+            str(FIXTURES / "zh_gbk.zip"),
+            "--target",
+            "windows",
+            "--module",
+            "encoding",
+        ],
+        capture_output=True,
+        env=env,
+        cwd=str(tmp_path),
+    )
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", errors="replace")
+    json.loads(proc.stdout.decode("utf-8"))  # 非 UTF-8 字节会在这里失败
+    assert b"\r\n" not in proc.stdout, "报告换行必须是 LF（K09）"

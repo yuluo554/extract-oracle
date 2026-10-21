@@ -47,8 +47,9 @@
 | `py -3.12 tools/check_publish_ready.py` | 退出码 `0`，**P1–P8 全绿**（提交后重跑：P2 扫 **139** 个跟踪文件无产物、P4 扫 114 个文本文件 0 命中；P7 干净树；P8 = `git bundle verify` 推送包自证） |
 | `py -3.12 tools/gen_fixtures.py --check` | 退出码 `0`，22/22 重生成结果与盘上产物逐字节一致 |
 | `py -3.12 tools/probe_tools.py --check` | 退出码 `0`，`22 份 fixture × 4 工具`；四工具自报版本与 `docs/divergence.md` §1.1 一致；`tools_agree = false` 的样本 **10** 份 |
-| `PYTHONPATH=src … py -3.12 -m pytest` | **408 passed**（M5 收尾为 397；= 397 + 10 条交付态 e2e + 1 条 README 版本一致性） |
+| `PYTHONPATH=src … py -3.12 -m pytest` | **409 passed**（M5 收尾为 397；= 397 + 10 条交付态 e2e + 1 条 README 版本一致性 + 1 条"伪造 cp1252 控制台"） |
 | 布局门自身的变异验证（M6 形态，**8 组**，在仓库副本里跑） | **8/8 拿到实跑红**、还原后全绿；`LAYOUT.RELEASE` 的三条判据（两栏 / 覆盖对账小节 / 缺档）**各自独立变红**（记录在 `plan/05` §三 3.1 的 M6 复跑记） |
+| **CI 首推首轮**（六矩阵格 + 产物 job） | **红**——**五组缺陷全部照录、逐条定性、逐条修复**（明细在 `plan/05` §5.1：3.9 的 `write_text(newline=)`、子进程"最小环境"、cp1252 控制台崩、GitHub `bash -e` 吞掉期望退 1 的冒烟命令、`overlap.zip` 的平台/版本行为差异）。**没有一组是"平台差异导致的假红"** |
 | `py -3.12 scripts/build.py --clean` | 退出码 `0`；产物自报 `extract-oracle 1.0.0`；**第二条自检**在中立 cwd 里 `platforms --verify` 退 `0` |
 | 中立目录四条命令（`--version` / `capabilities` / `inspect` / `check`） | 全通过：`--version` → 0；`capabilities` → 0（五模块 `implemented`）；`inspect clean.zip` → 0 且 `findings` 空；`check clean.zip --target windows` → 0 且三数组皆空；`check case.zip --target windows` → 1 且 `collision.CASEFOLD` / `survivor = README.TXT` / `evidenceStrength = table_simulated`；`check reserved.zip --target windows` → 1 且 `CON.txt` 三条证据齐、`aux.tar.gz` 为 `OK` |
 
@@ -160,9 +161,9 @@
 
 | 出口门 | 状态 | 证据 / 不适用理由 |
 |---|---|---|
-| push 数 = run 数对账（口径 = push 事件数；权威 = push 流水 ↔ `gh run list --json event,headBranch,headSha,conclusion`；写 sha 台账不写会自追的总数） | 待首推 | 台账格式与终止符（快照式：登记到 `<sha>` 为止）见 `§二`；首推后逐行登记 `branch push` 与 `tag push` 两条 run |
-| 四矩阵同点全红 = CI 步骤接线缺陷非平台差异 | 待首推 | 首推后若出现"多点同红"，按本条判定归因，登记进 `§二` |
-| 多平台冻结产物走 CI 原生构建 + 原生冒烟（PyInstaller 不能交叉编译） | 实现 | 新增 `single-file-artifact` job（`windows-latest` + Python 3.12）：`pip install -e ".[dev,build]"` → `scripts/build.py --clean` → `ORACLE_REQUIRE_ARTIFACT=1 pytest tests/test_artifact_e2e.py`。**只跑一个平台一个解释器**：产物不承诺跨机构建逐字节一致，要证的是"产物自洽可跑"；本机等价实跑已通过（`§一` §1.3）。**CI 侧**（该 job 真跑起来）→ 待首推 |
+| push 数 = run 数对账（口径 = push 事件数；权威 = push 流水 ↔ `gh run list --json event,headBranch,headSha,conclusion`；写 sha 台账不写会自追的总数） | 实现 | 台账（本文件 `§二`）**已建**：首推 `event=push` 有 run 记录，**首轮结论 = 失败**，逐条定性见 `plan/05` §5.1（五组缺陷，无一为平台假红）；**首跑红照录不抹除**（DoD 纪律）。台账写成"快照式：登记到 `<sha>` 为止，其后纯文档提交恒 1 push = 1 run，是否仍绿看 GitHub 上该 sha 的 run" |
+| 四矩阵同点全红 = CI 步骤接线缺陷非平台差异 | 实现 | 首轮**确实是"多点同红"**，按本条判定归因：①③④ 是测试/工作流自身缺陷（与平台无关），②是"最小环境传参"在 Windows 上的必然结果，⑤是真实的工具行为差异——**逐格定性写在 `plan/05` §5.1**，没有拿"平台差异"当挡箭牌 |
+| 多平台冻结产物走 CI 原生构建 + 原生冒烟（PyInstaller 不能交叉编译） | 实现 | 新增 `single-file-artifact` job（`windows-latest` + Python 3.12）：`pip install -e ".[dev,build]"` → `scripts/build.py --clean` → `ORACLE_REQUIRE_ARTIFACT=1 pytest tests/test_artifact_e2e.py`。**只跑一个平台一个解释器**：产物不承诺跨机构建逐字节一致，要证的是"产物自洽可跑"；本机等价实跑已通过（`§一` §1.3）。**CI 侧已在首轮真跑**：该 job 第一次就红，抓出的正是 U23 的"编码"那一半（cp1252 控制台 ⇒ `UnicodeEncodeError` 崩进程），修复后按 `§二` 台账复跑 |
 | CI 内联脚本优先落 `tools/` 脚本（heredoc 终止符 + 工作流文件 LF） | 实现 | 六个冒烟步是 `run: \|` 内联 bash，**不含 heredoc**（无终止符歧义）；工作流文件为 LF（`.gitattributes` 口径）。判定入口本身是交付态 CLI + `tools/` 里的门与生成器，没有"内联脚本里藏着唯一实现" |
 | 每条已交付命令都要有一条离线 CI 冒烟 | 实现 | 四个子命令各有着落：`capabilities` / `inspect` → `Console script smoke`；`check` → 五个判定冒烟（structure / fold / accessibility / encoding / container+budget）；`platforms --verify` → `fold smoke` 末条；**产物形态** → 新 `single-file-artifact` job。台账见 `plan/05` §五 U1 |
 | "能力缺失"的降级冒烟不许用 PATH 隔离伪造缺失 | 实现 | 本项目**不用 PATH 隔离**：`tests/test_cli_contract.py` 用**注入式**变异（把 `capabilities.MODULES` 与 `cli.MODULES` 一起翻回 False）证明"缺模块 → 退 3 且不产空 findings"；工具缺失侧用显式开关 `ORACLE_REQUIRE_TOOLS=1`（缺失即失败，不 skip 成假绿） |
@@ -181,7 +182,7 @@
 | 门要自己数「这轮扫到了几个」 | 实现 | 三门的非空跑自证都进结论：布局门 `文档 10 / 交接单 6 / 状态副本 4 / 文档点名工具 7`；脱敏门 `扫了 120 个文本文件，0 命中（豁免 1 份）`；发布就绪门 `跟踪文件 136 / 判据 8` |
 | `gh` 是原生程序，`/tmp/...` 路径它不认（`--notes-file` / 附件参数要 Windows 形态） | 待首推 | 实测坑已登记进 `AGENTS.md` 环境事实（"`/tmp` 与 `$TEMP` 不是同一处"同族）；Release 的 `--notes-file` 与附件路径一律给 `gh` **原生 Windows 路径**（`cygpath -w` 转过的形态），结果与踩坑在 `§二` 登记 |
 | 常驻测试要能"构造缺件态"（否则测的是瞬态） | 实现 | 四处 seam：`tests/test_artifact_e2e.py` 的 `ORACLE_REQUIRE_ARTIFACT=1`（产物缺失 → 失败；不设 → 响亮 skip）；`tests/test_tool_behaviour.py` 的 `ORACLE_REQUIRE_TOOLS=1`；`tests/test_publish_ready.py` 用**临时 sandbox 仓库**构造"dist/ 被跟踪""`.gitignore` 规则被删"等缺件态；**本轮补的第四处** = `tests/test_layout_gate.py::test_m10`——它原先靠"仓库里**没有**留档"表达缺档态，留档一落盘**这条测试自己变红**（测的是"任务还没做"，不是门的模式语义），改为在沙箱里**显式删掉**留档并加"缺件态自证"断言（`§一` §1.3 脚注同一条） |
-| 发布门的判据要按"真实发布动作序列"设计 | 实现 | `bootstrap_remote.py` 的判据 = **远端 sha == 本地 sha**（不是 `git push` 的退出码，K12）；`tests/test_publish_ready.py` 11 组变异按真实形态构造。**首推后按真实动作序列**（branch push → tag push → Release → 追加提交）复核一遍 → 待首推 |
+| 发布门的判据要按"真实发布动作序列"设计 | 实现 | `bootstrap_remote.py` 的判据 = **远端 sha == 本地 sha**（不是 `git push` 的退出码，K12）；`tests/test_publish_ready.py` 11 组变异按真实形态构造。**首推已按真实序列走通**（建仓 → 首推 → sha 对账），首轮随即暴露"`bootstrap_remote.py` 的 push 判据是对的、但**推送通路**在本机不可用"这一环境事实（见下条），处置见 `§二` |
 | "发布未达成"与"环境缺失"必须是两个退出码语义 | 实现 | `check_publish_ready.py`：`0` 全绿 / `1` 有 FAIL / `3` 非 git 工作树或无 git 可执行。`bootstrap_remote.py` 同族（缺 `gh`/未登录 = 环境缺失；远端 sha 不符 = 未达成）。两者都不把"事情没做完"报成"这台机器做不了" |
 | 新增/改写的守门要做一次变异验证（含九形态假门族） | 实现 | 布局门：M1–M5 各按当轮形态复跑、**M6 按"六 ✅ 里程碑 + 真实留档"复跑**（记录在 `plan/05` §三 3.1）；脱敏门 4 组、发布就绪门 11 组各在 `tests/` 里有常驻变异。**本轮新增/改写的门**：`scripts/build.py` 的第二条产物自检与 `tests/test_artifact_e2e.py` 的 10 条——前者当场抓住 U22（改前红）、后者当场抓住 U23（改前红），即"弄坏被测行为 → 门必须变红"的实证（记录在 `§一` §1.6） |
 

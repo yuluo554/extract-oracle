@@ -19,6 +19,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import os
+
 import pytest
 
 from extract_oracle import platforms as platform_tables
@@ -554,7 +556,7 @@ def test_accessibility_entry_point_runs_in_subprocess(tmp_path):
         ],
         capture_output=True,
         text=True,
-        env=env,
+        env={**os.environ, **env},
         cwd=str(tmp_path),
     )
     assert proc.returncode == 1, proc.stderr

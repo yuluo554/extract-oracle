@@ -104,18 +104,37 @@ def test_mismatch_name_7zip_writes_lfh_name(tmp_path):
 # ---------------------------------------------------------------- overlap.zip
 
 
-def test_overlap_python_refuses_but_unzip_extracts(tmp_path):
-    """`overlap.zip`：一个拒绝、三个照解——**分歧方向**就是这条断言的全部内容。"""
+def test_overlap_python_refusal_is_version_dependent_and_unzip_never_degrades(tmp_path):
+    """`overlap.zip`：**分歧方向**仍是这条断言的全部内容，但两处"按平台/版本而变"必须写实。
 
-    with pytest.raises(zipfile.BadZipFile):
-        with zipfile.ZipFile(FIXTURES / "overlap.zip") as archive:
-            archive.read("a.txt")
+    实测依据（M6 首推首跑的真日志）：
+
+    * **Python 的"重叠"检测是 3.12 起的行为**：本机 3.12.10 抛
+      `BadZipFile: Overlapped entries: 'a.txt' (possible zip bomb)`；本机 3.8.8 与 CI 的 3.9 通道
+      **照读**（`namelist()` / `read()` 都成功）。把"3.9 也拒绝"写成硬断言 → 3.9 矩阵恒红；
+      把"照读"写成硬断言 → 对 3.12 的检测能力视而不见。所以按 `sys.version_info` 分派。
+    * **`unzip` 的退出码随发行版补丁而变**：本机 Cygwin 6.00 → `rc=0` 且落出两个名字；
+      Ubuntu 的 6.00（带重叠/炸弹检查补丁）→ `rc=12`。R4（`plan/05` §七）说得很清楚：
+      **只锁分歧方向，不锁具体退出码**。所以这里锁的是"**它要么照解、要么明确报错，
+      绝不静默给出一份错的落盘**"，并把实测值带进断言消息（下一次 CI 会把它读出来记档）。
+    """
+
+    with zipfile.ZipFile(FIXTURES / "overlap.zip") as archive:
+        if sys.version_info >= (3, 12):
+            with pytest.raises(zipfile.BadZipFile):
+                archive.read("a.txt")
+        else:
+            # 3.9 通道：Python 与另三家一样"照读"——分歧方向在 <3.12 上缩到"谁报错"这一维。
+            assert archive.read("a.txt")[:4] == b"PK\x03\x04"
 
     tool = _unzip()
     out = tmp_path / "unzip-overlap"
-    code, _text = _extract_with([tool, "-o", str(FIXTURES / "overlap.zip"), "-d", str(out)], out)
-    assert code == 0, "unzip 对 overlap.zip 应正常解出（rc=0）"
-    assert _written(out) == ["a.txt", "b.txt"]
+    code, text = _extract_with([tool, "-o", str(FIXTURES / "overlap.zip"), "-d", str(out)], out)
+    written = _written(out)
+    assert written == ["a.txt", "b.txt"] or code != 0, (
+        "unzip 对 overlap.zip 的处置无法归类（既没落出两个名字，也没报非零退出码）："
+        f"rc={code} written={written} text={text[:300]!r}"
+    )
 
 
 # ---------------------------------------------------------------- crc_diverge.zip

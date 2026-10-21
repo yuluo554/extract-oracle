@@ -477,30 +477,37 @@ COMMANDS = {
 }
 
 
-def _force_lf_stdout() -> None:
-    """让 stdout 的换行恒为 LF（`data/README.md` §4.8 的冻结契约，K09）。
+def _configure_streams() -> None:
+    """把 stdout / stderr 固定成 **UTF-8 + LF + 不因编码崩**（`data/README.md` §4.8，K09）。
 
-    实测（M6 交付态冒烟，产物 `dist/extract-oracle.exe`）：Windows 上 `sys.stdout` 是
-    `newline=None` 的 `TextIOWrapper`，写 `\\n` 会被翻成 `\\r\\n`；于是
-    `extract-oracle check x --format json > a.json` 与 `--out a.json`（走 `write_atomic`，
-    `newline="\\n"`）给出**不同字节**——同一个归档的**默认输出路径**违反了自己的换行口径，
-    也让"同输入 → 同一输出"在跨机上不成立（靶子 `tests/test_artifact_e2e.py`）。
+    两个实测各自的成因（都在 M6 交付态冒烟里第一次跑就撞上，靶子 `tests/test_artifact_e2e.py`）：
 
-    这里只改**换行翻译**，不动编码：非 UTF-8 控制台上中文表标签仍按控制台编码显示。
-    没有 `reconfigure` 的替代 stdout（如被测试框架接管的流）保持原样。
+    1. **换行**：Windows 上 `sys.stdout` 是 `newline=None` 的 `TextIOWrapper`，写换行符会被翻成
+       `CRLF`；于是 `extract-oracle check x --format json > a.json` 与 `--out a.json`
+       （走 `write_atomic`，显式 `newline="\\n"`）给出**不同字节**——同一个归档的**默认输出路径**
+       违反了自己的换行口径，也让"同输入 → 同一输出"在跨机上不成立。
+    2. **编码**：产物在 CI 的 Windows runner（cp1252 控制台）上打 `platforms --verify` 时
+       `UnicodeEncodeError: 'charmap' codec can't encode characters`（表标签是中文）**直接崩掉进程**；
+       即"报告的字节形态取决于宿主 locale"——与上面同一条纪律冲突。
+
+    所以这里把两个流都固定成 UTF-8 + LF；`errors="backslashreplace"` 是兜底（保证**永不抛**，
+    代价是出现不可编码字符时退化成转义，而不是静默丢字节）。
+    没有 `reconfigure` 的替代流（如被测试框架接管的）保持原样——它们自己保证可写。
     """
 
-    reconfigure = getattr(sys.stdout, "reconfigure", None)
-    if reconfigure is None:
-        return
-    try:
-        reconfigure(newline="\n")
-    except (ValueError, OSError):  # 已分离/只读的流：不接管，宁可保持平台默认也不崩
-        pass
+    for name in ("stdout", "stderr"):
+        stream = getattr(sys, name, None)
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", newline="\n", errors="backslashreplace")
+        except (ValueError, OSError):  # 已分离/只读的流：不接管，宁可保持平台默认也不崩
+            pass
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    _force_lf_stdout()
+    _configure_streams()
     parser = build_parser()
     try:
         args = parser.parse_args(argv)
