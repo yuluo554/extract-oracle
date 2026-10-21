@@ -122,15 +122,19 @@ def test_smoke_step_does_not_pipe_into_grep(name: str, script: str) -> None:
     )
 
 
-def _console_shim(directory: Path) -> Path:
-    """造一个 `extract-oracle` 可执行 shim（等价于 console script，避免依赖 pip 安装态）。"""
+def _bash_preamble() -> str:
+    """把 `extract-oracle` 定义成 **bash 函数**（等价于 console script，但不依赖 PATH 与 shebang）。
 
-    shim = directory / "extract-oracle"
+    为什么不用"写一个可执行 shim 文件"（首版就是那么做的，CI 实测踩到）：
+    shim 的 `#!/bin/sh` 在 **Windows runner** 上被解析成 **WSL 的启动器**（`/bin/sh` 不属于
+    Git Bash），于是脚本里每个 `extract-oracle` 都变成
+    `Windows Subsystem for Linux has no installed distributions`、整步 rc=1 ——
+    测出来的是"宿主怎么解释 shebang"，**不是冒烟步本身**。
+    函数形态没有任何文件被执行，因此与平台无关；`"$@"` 也保住了参数与退出码。
+    """
+
     interpreter = sys.executable.replace("\\", "/")
-    with open(shim, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(f'#!/bin/sh\nexec "{interpreter}" -m extract_oracle "$@"\n')
-    shim.chmod(0o755)
-    return shim
+    return f'extract-oracle() {{ "{interpreter}" -m extract_oracle "$@"; }}\n'
 
 
 @pytest.mark.parametrize("name,script", _smoke_steps(), ids=[n for n, _ in _smoke_steps()])
@@ -144,16 +148,14 @@ def test_smoke_step_runs_under_github_bash_flags(name: str, script: str, tmp_pat
     if shutil.which("bash") is None:
         pytest.skip("本机没有 bash（Windows 裸环境）；CI 的三个平台都有")
 
-    _console_shim(tmp_path)
     env = {
         **os.environ,
         "PYTHONUTF8": "1",
         "ORACLE_REQUIRE_TOOLS": "1",
         "PYTHONPATH": str(REPO / "src"),
-        "PATH": str(tmp_path) + os.pathsep + os.environ.get("PATH", ""),
     }
     proc = subprocess.run(
-        ["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", script],
+        ["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", _bash_preamble() + script],
         capture_output=True,
         text=True,
         encoding="utf-8",
