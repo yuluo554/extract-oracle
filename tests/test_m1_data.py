@@ -298,3 +298,64 @@ def test_compressed_epub_crc_is_over_uncompressed_content():
         info = archive.getinfo("mimetype")
         assert info.compress_type == zipfile.ZIP_DEFLATED
         assert archive.read("mimetype") == b"application/epub+zip"  # 读不出来会抛 BadZipFile
+
+
+# ── docs/divergence.md 的"22×4 = 88 格"是承诺，必须有机器判据 ─────────────────────
+
+
+def test_divergence_doc_covers_every_fixture_with_four_tool_cells():
+    """`docs/divergence.md` 声称"88 格逐格命令 + 输出节选"——**这句话本身要被机器核。**
+
+    为什么必须核：`plan/01` §3 第 4 条把"分歧对照每格附实测命令与输出节选"写成提交材料，
+    而 `plan/06` §二 把 `docs/divergence.md` 列为招牌动词的兑现物。只靠人读，**漏一份 fixture
+    或漏一格工具都不会变红**——那正是"文档承诺"与"机器判据"脱节的经典形态。
+    判据只数**表格行**（形如 "竖线 + 反引号工具名 + 竖线 + 反引号命令"），不读散文。
+    """
+
+    import re
+
+    doc = REPO / "docs" / "divergence.md"
+    assert doc.is_file(), "缺 docs/divergence.md"
+    text = doc.read_text(encoding="utf-8")
+    tools = ("python-zipfile", "info-zip-unzip", "7zip", "libarchive")
+    cell_re = re.compile(r"^\| `(%s)` \| `" % "|".join(tools))
+
+    blocks: dict[str, int] = {}
+    order: list[str] = []
+    current: str | None = None
+    for line in text.splitlines():
+        heading = re.match(r"^#{3,4} (?:\d+\.\d+ )?`([^`]+\.(?:zip|epub))`", line)
+        if heading:
+            current = heading.group(1)
+            blocks[current] = 0
+            order.append(current)
+            continue
+        if line.startswith("## "):
+            current = None
+        if current and cell_re.match(line):
+            blocks[current] += 1
+
+    fixtures = sorted(p.name for p in FIXTURE_DIR.iterdir() if p.suffix in {".zip", ".epub"})
+    assert len(order) == len(set(order)), f"同一 fixture 出现多个小节: {order}"
+    assert sorted(order) == fixtures, (
+        "divergence.md 的小节与 data/fixtures 不一一对应："
+        f"缺 {sorted(set(fixtures) - set(order))} / 多 {sorted(set(order) - set(fixtures))}"
+    )
+    incomplete = {name: count for name, count in blocks.items() if count != len(tools)}
+    assert incomplete == {}, f"这些 fixture 的逐格表不是 4 行: {incomplete}"
+    assert sum(blocks.values()) == len(fixtures) * len(tools) == 88, sum(blocks.values())
+
+
+def test_divergence_doc_records_the_two_measured_narrowings():
+    """M5 的两处实测收窄必须在定稿里**写明**（旧表述"7z 多编码猜测"不得照抄）。"""
+
+    text = (REPO / "docs" / "divergence.md").read_text(encoding="utf-8")
+    assert "不做字符集探测" in text, "缺'7z/libarchive 不做字符集探测'这条收窄"
+    assert "与 bit 11 无关" in text, "缺'unzip 落盘名与 bit 11 无关'这条收窄"
+    # 反向：旧说法"7z → 多编码猜测"**只允许**作为"初版表述"出现在对照表的左列
+    # （改正表要引用旧措辞才读得懂），不得作为结论出现。
+    for line in text.splitlines():
+        if "多编码猜测" in line:
+            assert "初版表述" in line or "| \"`7z` → 多编码猜测\" |" in line, (
+                f"旧表述'多编码猜测'出现在非对照位置: {line[:120]}"
+            )
