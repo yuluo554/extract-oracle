@@ -100,7 +100,8 @@ M6 的交付 = **发布面**，**不碰 M5 的判定面**（`src/` `scripts/` `d
    （判据 = **远端 sha == 本地 sha**，不是 `git push` 的退出码）→ `git tag -a` → `gh release create`
    附 `dist/extract-oracle.exe` + 确定性源码包，本地留副本并记 sha256。
 6. **回填 CI 实跑**（`plan/05` §五 U1）：首推后把真实 run id 写进 `plan/05` §五 U1 与
-   `plan/RELEASE-M6.md`；三平台 × Python 3.9/3.12 矩阵（U9/U10）一并关闭或按实况记结果。
+   `plan/RELEASE-M6.md`；矩阵口径按实况记（v1.0.0 时为三平台 × Python 3.9/3.12；
+   **v1.0.1 起抬到 3.12/3.13**，U9/U10 的结论不受影响）。
 7. **收尾**（按 §6 checklist）：四份状态副本 M6 翻 ✅、`plan/06` 缺口表逐行关闭、
    `README.md` 去掉"待 M5/M6"措辞、`AGENTS.md` 与 `plan/00` 顶部状态行同步。
    **M6 是最后一个里程碑**：收尾只需把状态翻 ✅，**不需要**写 `HANDOFF-M7.md`
@@ -137,7 +138,7 @@ M6 的交付 = **发布面**，**不碰 M5 的判定面**（`src/` `scripts/` `d
 
 ## 5. 本机环境坑（只写实测过的，2026-10-21）
 
-- `python` 是商店占位符 → 一律 `py -3.12`。本项目 `requires-python >= 3.9`。
+- `python` 是商店占位符 → 一律 `py -3.12`。本项目 `requires-python >= 3.12`（v1.0.1 起；v1.0.0 时为 `>= 3.9`，3.9 已于 2025-10 EOL）。
 - 命令一律带 `PYTHONUTF8=1`，否则中文输出在某些控制台会炸。
 - **跑测试要带 `PYTHONPATH=src`**（未 `pip install -e .` 时）；已安装则不需要。
 - `7z` 不在 PATH：`C:\Program Files\7-Zip\7z.exe`；`unzip` 在 Git for Windows 的 `/usr/bin/unzip`
@@ -164,16 +165,35 @@ M6 的交付 = **发布面**，**不碰 M5 的判定面**（`src/` `scripts/` `d
 
 ## 6. DoD 逐项 checklist（M6）
 
-- [ ] `docs/divergence.md` 定稿：22×4 格每格有实测命令与输出节选；按 §1 的两处收窄写
-- [ ] `__version__` 定版；`gen_fixtures.py --check` 仍逐字节一致
-- [ ] `py -3.12 scripts/build.py` 出 `dist/extract-oracle.exe`；仓库外中立目录原生冒烟四条命令通过
-- [ ] `plan/RELEASE-M6.md` **在 tag 之前**落盘（两栏 + §三 覆盖对账表，三态齐）；tag 树内不写 OID/sha 字面值
-- [ ] `check_publish_ready.py` 全绿；`bootstrap_remote.py` 建仓首推成功（远端 sha == 本地 sha）
-- [ ] tag + `gh release create` 附产物；回下载件 sha256 对账 + 原生冒烟
-- [ ] `plan/05` §五 U1/U9/U10 回填真实 CI run 结果（或按实况记）
-- [ ] 四份状态副本 M6 翻 ✅；`plan/06` 缺口表逐行关闭（含"判定层未落地"整行删除）
-- [ ] `README.md` / `AGENTS.md` / `plan/00` 顶部状态行同步；`pytest` 全绿；三门下全绿
-- [ ] M6 收尾：**无需** `HANDOFF-M7.md`（最后一个里程碑）；本地等价校验 vs CI 实跑按实况写
+> **收尾状态（2026-10-23，v1.0.1 发布后逐项复核）**：十条全部成立。逐条给可复跑的证据；
+> 其中第 3/6/10 条的最新值取自 **v1.0.1**（v1.0.0 的历史值仍在 `plan/RELEASE-M6.md` §二）。
+
+- [x] `docs/divergence.md` 定稿：22×4 格每格有实测命令与输出节选；按 §1 的两处收窄写
+      → 机器判据 `tests/test_m1_data.py`（数表格行正则）实测 **3 passed**（88 格一一对应）
+- [x] `__version__` 定版；`gen_fixtures.py --check` 仍逐字节一致
+      → `__version__ = "1.0.1"`（v1.0.0 时为 `1.0.0`）；`gen_fixtures.py --check` → 22/22 逐字节一致 exit 0
+- [x] `py -3.12 scripts/build.py` 出 `dist/extract-oracle.exe`；仓库外中立目录原生冒烟四条命令通过
+      → 自报 `extract-oracle 1.0.1`；中立目录 `--version` / `capabilities` / `platforms --verify` /
+        `check` 全通（`platforms --verify` 退 0，平台表随包分发）
+- [x] `plan/RELEASE-M6.md` **在 tag 之前**落盘（两栏 + §三 覆盖对账表，三态齐）；tag 树内不写 OID/sha 字面值
+      → §一 零 OID/sha256 字面值；v1.0.1 的实值登记在 §二.2（tag 之后的追加提交）
+- [x] `check_publish_ready.py` 全绿；`bootstrap_remote.py` 建仓首推成功（远端 sha == 本地 sha）
+      → **9 条判据全绿**（v1.0.1 起含 P9，`--online` 时 PASS）；实测 `git rev-parse HEAD` ==
+        `gh api …/commits/main --jq .sha`（两边都是 `400f45d`）
+- [x] tag + `gh release create` 附产物；回下载件 sha256 对账 + 原生冒烟
+      → `v1.0.1` 非 draft 非 prerelease、**Latest**、2 附件；回下载 `sha256sum -c` 两条 OK、
+        `cmp` 逐字节一致、解包树 `pytest` **484 passed / 10 skipped**（该 skip 的是产物不在树里的 e2e）
+- [x] `plan/05` §五 U1/U9/U10 回填真实 CI run 结果（或按实况记）
+      → U1/U9/U10 均有结论行；**U10 的 3.9 通道已随 floor 抬到 3.12 而整条退出**（不再是"未验证"）
+- [x] 四份状态副本 M6 翻 ✅；`plan/06` 缺口表逐行关闭（含"判定层未落地"整行删除）
+      → `LAYOUT.STATUS 3 处副本 × 7 个里程碑 状态全一致`；`LAYOUT.GAPS 缺口列扫了 1 行，无已 ✅ 里程碑`；
+        `LAYOUT.LEDGER 台账 18 行，已成 ✅ 的里程碑无未完成标记`
+- [x] `README.md` / `AGENTS.md` / `plan/00` 顶部状态行同步；`pytest` 全绿；三门下全绿
+      → 三处均写 `v1.0.1`；`pytest` **494 passed**；布局门 / 脱敏门 / 发布就绪门（9 条）全绿
+- [x] M6 收尾：**无需** `HANDOFF-M7.md`（最后一个里程碑）；本地等价校验 vs CI 实跑按实况写
+      → `LAYOUT.HANDOFF_NEXT 已是最后一个里程碑，无下一棒交接单要求`；CI 实跑台账在
+        `plan/RELEASE-M6.md` §二（v1.0.0）与 §二.2（v1.0.1：main `39927313597` / tag `39927758433` /
+        追加提交 `39928653627`，三条 success）
 
 ## 7. 关键命令速查
 

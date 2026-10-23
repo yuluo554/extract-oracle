@@ -31,7 +31,7 @@
 | `tools/probe_tools.py` | 四工具行为对照（可重跑，落 `data/tool-matrix/`） | ✅ M1 |
 | `tools/check_sprint_layout.py` | 布局门（方法论装订第②件） | ✅ M0 |
 | `tools/check_desensitized.py` | 脱敏门（发布前必跑，CI 同 job） | ✅ M0 |
-| `tools/check_publish_ready.py` | 发布就绪门（可上传性 P1–P8；**不判是否已发布**） | ✅ M0 |
+| `tools/check_publish_ready.py` | 发布就绪门（可上传性 P1–P9；P9 默认 SKIP、`--online` 才联网；**不判是否已发布**） | ✅ M0；v1.0.1 加 P9 |
 | `tools/bootstrap_remote.py` | 建仓 + 首推 + sha 对账 + CI run 回读（默认 dry-run） | ✅ M0 |
 | `tests/` | 契约 / 确定性 / fixture 对账 / 门自身变异验证 / M1 数据产物 / 判定验收 | ✅ M0 起；M1 加 `test_m1_data.py`；M2 加六份判定与矩阵断言；M3 加 `test_fold.py` |
 | `docs/rules.md` | 规则原句台账（15 行 × URL × 原句 + 逐规则反查表） | ✅ M4 定稿（5 行原句回填 + 两处出处更正 + 新增 POSIX 行） |
