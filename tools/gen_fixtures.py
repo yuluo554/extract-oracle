@@ -693,8 +693,10 @@ def write_all(out_dir: Path) -> None:
     for name, data in generate().items():
         (out_dir / name).write_bytes(data)
         truth_text = json.dumps(_truth_payload(name), ensure_ascii=False, sort_keys=True, indent=2) + "\n"
-        # 显式 LF 写盘、**Python 3.9 兼容**：`write_text(newline=…)` 是 3.10 才加的签名
-        # （`tests/test_py39_compat.py` 守着这一类；K05 的逐字节一致依赖这里的 LF）。
+        # 显式 LF 写盘：K05 的逐字节一致依赖这里的 LF（Windows 上 `Path.write_text` 会写 CRLF）。
+        # 写法沿用 M6 的 3.9 版守门（`tests/test_py39_compat.py`，见 `plan/05` §五 U27）抓出来的形态：
+        # 它当时禁的是 3.10 才加的 `write_text(newline=…)` 签名；floor 现为 3.12、那条判据已换成
+        # "禁高于 floor 的 API"，**本写法照旧**——改动它没有收益，风险是 K05 变红。
         with open(truth_dir / f"{name}.json", "w", encoding="utf-8", newline="\n") as handle:
             handle.write(truth_text)
 

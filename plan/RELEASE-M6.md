@@ -131,24 +131,29 @@
 > 升版本号本身就是"交付面动了一处"，这正是发新版的判据，不是纪律破裂。
 >
 > **本节在 v1.0.1 的 tag 树内是占位骨架**（同 §二的规则）：tag OID / 新附件 sha256 写在 v1.0.1 的
-> **tag 之后**追加提交里。当前你读到的这一版是 **tag 之前**落盘的骨架。
+> **tag 之后**追加提交里。**当前你读到的这一版是 tag 之后的追加提交**，所以下表已填实值。
+> **不许**把下表的值搬回 v1.0.1 的 tag 树那一版（那正是自指陷阱的复发形态）。
 
 | 项 | 值 | 核对命令 |
 |---|---|---|
-| 版本 | `1.0.1`（`src/extract_oracle/__init__.py`，唯一真源） | `py -3.12 -c "import sys;sys.path.insert(0,'src');import extract_oracle;print(extract_oracle.__version__)"` |
-| tag 名 / 类型 | `v1.0.1` / annotated | `git cat-file -t v1.0.1` |
-| tag 对象 OID | _（tag 后追加提交登记）_ | `git rev-parse v1.0.1` |
-| tag 指向的 commit | _（tag 后追加提交登记）_ | `git rev-parse v1.0.1^{commit}` |
-| 交付面相对 v1.0.0 | **只差 `src/extract_oracle/__init__.py` 的 `__version__` 一处字面值**；`scripts/` 与 `data/fixtures/` 零差异 | `git -c core.quotepath=false diff --stat v1.0.0..v1.0.1 -- src/ scripts/ data/fixtures/` |
-| 附件清单与 sha256 | _（tag 后追加提交登记）_ | `gh release download v1.0.1` + `sha256sum` |
-| D1 关闭（floor） | `requires-python = ">=3.12"`；CI matrix `python: ["3.12","3.13"]`；`tomli` dev 条件依赖已删 | `grep -n "requires-python" pyproject.toml` / `grep -C1 "python:" .github/workflows/ci.yml` |
-| D2 关闭（description） | 改成与 README 首行一致的定位；新增 `check_publish_ready.py` 的 **P9.REPO_DESCRIPTION**（默认 SKIP、`--online` 才联网） | `gh api repos/yuluo554/extract-oracle --jq .description` / `py -3.12 tools/check_publish_ready.py --online` |
-| D3（tag 树 M6 ⬜） | **用户裁定「只登记不修」**：不回填 v1.0.0 的 tag 树（违反「不重打 tag」纪律）。v1.0.1 的 tag 树里 M6 是 ✅（沿用 HEAD 的 `a8f8d22` 回填），但 **v1.0.0 的 tag 树仍是 ⬜** | `git show v1.0.0:README.md \| grep "^\\| M6"` / `git show v1.0.1:README.md \| grep "^\\| M6"` |
-| D6 关闭（`tools/` 3.9 缺陷） | v1.0.1 的 sdist 里 `tools/gen_fixtures.py` 的写盘路径不再 `TypeError`（真值写盘改用 `open(..., newline="\n")`） | 解包新 sdist → `grep -n "write_text" tools/gen_fixtures.py`（0 命中 `newline=`）/ `py -3.8 -X utf8 tools/gen_fixtures.py --out <tmp>`（不再 TypeError） |
-| D5 关闭（门扫 `update/`） | `check_desensitized.py` 的 `SKIP_DIRS` 加 `"update"`；`.gitignore` 加 `update/`（两条一起才消掉脱敏门与 `P7.CLEAN_TREE` 两个假红） | `grep -n '"update"' tools/check_desensitized.py` |
-| D7 登记（`-qq` 吞汇总行） | **不改**（`addopts = "-q"` 是既有口径）；只在纪律里写明「要贴汇总行就不带 `-q`」 | `py -3.12 -m pytest`（不带 `-q`） |
-| 测试 | **488 passed**（v1.0.0 的 482 + 新增 6 条：`test_py39_compat.py` 重写后的 5 条 + `test_license_metadata.py` 新增 1 条 EOL 负控） | `py -3.12 -m pytest`（不带 `-q`） |
-| CI run 台账（v1.0.1） | _（tag 后追加提交登记）_ | `gh run list --json databaseId,headSha,event,headBranch,conclusion` |
+| 版本 | `1.0.1`（`src/extract_oracle/__init__.py`，唯一真源） | `py -3.12 -c "import sys;sys.path.insert(0,'src');import extract_oracle;print(extract_oracle.__version__)"` → `1.0.1` |
+| tag 名 / 类型 | `v1.0.1` / **annotated** | `git cat-file -t v1.0.1` → `tag` |
+| tag 对象 OID | `6673cd3f016e0e8e6e3a9407255426c279dc6058` | `git rev-parse v1.0.1` |
+| tag 指向的 commit | `9a3e4d571551b89f77b74bc37dbe11a559558f89` | `git rev-parse v1.0.1^{commit}` |
+| 交付面相对 v1.0.0 | **只差 `src/extract_oracle/__init__.py` 的 `__version__` 一处字面值**（`1 file changed, 1 insertion(+), 1 deletion(-)`）；`scripts/` 与 `data/fixtures/` **零差异** | `git diff --stat v1.0.0..v1.0.1 -- src/ scripts/ data/fixtures/` |
+| 附件清单与 sha256 | `sha256: 7a381e8017adf81fd191c26e5ea74007f4aad858f7791bde73b0515c6d179a8e  extract-oracle.exe`（7,537,383 B）<br>`sha256: c6791a29de19b630ca5fabb149ed4c93811c18719d1bf84fe9569f09e6e1fbb4  extract-oracle-1.0.1.tar.gz`（458,158 B） | `sha256sum` 两条；**Release 正文同步登记同一组值**，Release 侧 digest 与本地**逐字符一致** |
+| 回下载对账 | `gh release download v1.0.1` 取回两件 → `sha256sum -c` 两条 **OK** → `cmp` 与本地件一致（两件都 `CMP OK`）→ 下载的源码包解包 → `pytest` **484 passed / 10 skipped**（跳过的是"产物不在树里"的交付态 e2e，设计如此）→ 布局门全绿 / 脱敏门 0 命中 / `gen_fixtures --check` 逐字节一致 | 已实跑 |
+| 源码包正证（不依赖写死值） | `git archive --format=tar --prefix=extract-oracle-1.0.1/ v1.0.1 \| gzip -9n` → 与**下载件** `cmp` **逐字节一致** | 已实跑 |
+| `.exe` 在中立目录（无仓库、无 `data/`） | `--version` → `extract-oracle 1.0.1`（退 0）；`capabilities` → 五模块全 `implemented`（退 0）；`platforms --verify` → `OK` + `ntfs_upcase entries=65536 sha256=41c26bc7a12bdaeb…`（退 0）；`check clean.zip --target windows` → 0；`check case.zip --target windows --module fold` → 命中 `collision.CASEFOLD` | 已实跑 |
+| D1 关闭（floor） | `requires-python = ">=3.12"`；CI matrix `python: ["3.12","3.13"]`；`tomli` 条件依赖已删 | `grep -n "requires-python" pyproject.toml` → `>=3.12`；`grep -C1 "python:" .github/workflows/ci.yml` → `["3.12","3.13"]` |
+| D2 关闭（description） | 改成与 README 首行一致的定位；新增 `check_publish_ready.py` 的 **P9.REPO_DESCRIPTION**（默认 SKIP、`--online` 才联网） | `gh api repos/yuluo554/extract-oracle --jq .description`；`py -3.12 tools/check_publish_ready.py --online` → `PASS P9.REPO_DESCRIPTION` |
+| D3（tag 树 M6 ⬜） | **用户裁定「只登记不修」**：不回填 v1.0.0 的 tag 树。测得的实况：`v1.0.0` 的 tag 树 `| M6 | ⬜ |` + `LAYOUT.RELEASE 发布里程碑 M6 未完成，收尾记录尚不适用`；`v1.0.1` 的 tag 树 `| M6 | ✅ |` + `LAYOUT.RELEASE 两栏:True 覆盖对账小节:True 三态行数:48`（正向分支）。**v1.0.0 的 tag/Release 未动** | `git show v1.0.0:README.md \| grep "^\\| M6"` / `git show v1.0.1:README.md \| grep "^\\| M6"` |
+| D6 关闭（`tools/` 3.9 缺陷） | v1.0.1 的 sdist 里写盘路径已是 `open(..., newline="\n")`（v1.0.0 的 tag 树里是 `(truth_dir / f"{name}.json").write_text(..., newline="\n")`，行 695）。实测：解包 v1.0.1 的 sdist → `py -3.8 -X utf8 tools/gen_fixtures.py --out <tmp>` → **`已生成 22 份 fixture`，exit 0，不再 `TypeError`**。**判据口径记实**：`grep -n "write_text" tools/gen_fixtures.py` 在该树里**命中 1 行、且那一行是注释**（描述历史），不是调用 —— AST 复核该文件**没有任何 `write_text` 调用**（唯一的 `.read_text(encoding=)` 在行 718，只读路径、不带被禁关键字）。grep 分不清注释与调用，所以这一条的机器判据应以 AST 形态为准 | 解包新 sdist → `grep -n "write_text" tools/gen_fixtures.py`（1 命中 = 注释）/ AST 复核 0 调用 / `py -3.8 …` exit 0 |
+| D5 关闭（门扫 `update/`） | `check_desensitized.py` 的 `SKIP_DIRS` 加 `"update"` + `.gitignore` 加 `update/`（两条一起才消掉脱敏门与 `P7.CLEAN_TREE` 两个假红） | `grep -n '"update"' tools/check_desensitized.py` → 命中；`grep -n update .gitignore` → 命中 |
+| D7 登记（`-qq` 吞汇总行） | **不改**（`addopts = "-q"` 是既有口径）；纪律里写明「要贴汇总行就不带 `-q`」 | `py -3.12 -m pytest`（不带 `-q`）→ `494 passed` |
+| 测试 | 仓库态 **494 passed**；sdist 解包态 **484 passed / 10 skipped**（跳过的是产物不在树里的交付态 e2e） | `py -3.12 -m pytest`（不带 `-q`） |
+| CI run 台账（v1.0.1） | 两条 run **同一 sha `9a3e4d5`**，各自 **success**：<br>`39927313597 main push success`（8/8 job：gate + 3 OS × {3.12,3.13} 六格 + `single-file-artifact`）<br>`39927758433 v1.0.1 push success`（tag run，同 sha 两条合法）<br>**注解记实**：run 上仍挂着 `actions/checkout@v4` / `actions/setup-python@v5` 的 **Node.js 20 弃用**提示，以及 `ubuntu-latest` 将于 2026-10-19 迁到 Ubuntu 26 的提示——**本轮未动 actions 版本**（诊断书 D1–D8 未列此项，属下一轮候选） | `gh run list --json databaseId,headSha,event,headBranch,conclusion` |
+| 如实留档一处落后（`plan/RELEASE-M6.md:159` 同款处置） | **v1.0.1 的 tag 树里 `tools/gen_fixtures.py` 的那两行注释仍是 M6 原文**（写着"Python 3.9 兼容"并提及 `write_text(newline=…)`）。本笔 tag 之后的追加提交已把注释改新（与姊妹文件 `fetch_upcase.py` 对齐），**不回填 tag 树** —— 那是 tag 时点的真实字节，改它就会换掉已登记的 sha256 | 见左列；`grep -n "Python 3.9 兼容" tools/gen_fixtures.py`（main 上现已 0 命中） |
 
 ---
 
