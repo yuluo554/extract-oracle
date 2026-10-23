@@ -13,7 +13,10 @@ py -3.12 tools/check_desensitized.py
 - 接手对话（无 HANDOFF）：先读 `plan/00`、`plan/05`、`plan/06` 与各 HANDOFF，重建"当前状态 + K 口径清单"再动手。
 - **门不存在 = 本项目没装订** → 先补第零步三件（本文件 + 布局门 + `plan/00` 顶部一行），再做别的。
 - **要推 GitHub 之前**：`py -3.12 tools/check_publish_ready.py` 必须全绿（它判"能不能推"，不判"发没发布"）。
-- **本项目已发布（v1.0.0）**：交付面（`src/` `scripts/` `data/fixtures`）**不得再改**；任何改动都要升版本号重发。
+- **本项目已发布（v1.0.1）**：交付面（`src/` `scripts/` `data/fixtures`）**不得再改**；任何改动都要升版本号重发。
+  （v1.0.1 = 维护发布：floor 3.9→3.12、`tools/` 的 3.9 缺陷终于进 tag 树、GitHub description 修正；
+  交付面相对 v1.0.0 **只差 `src/extract_oracle/__init__.py` 的 `__version__` 一处字面值**，
+  `scripts/` 与 `data/fixtures/` **逐字节零差异** —— 登记在 `plan/RELEASE-M6.md` §二「v1.0.1 维护发布」小节。）
 
 ## 强制布局（布局门逐条断言，改动前先看这里）
 
@@ -37,7 +40,7 @@ py -3.12 tools/check_desensitized.py
 
 ## 环境事实与禁忌（实测日期：2026-10-21）
 
-- 本机 `python` 是商店占位符，一律用 `py -3.12`（3.8 也在，但本项目 `requires-python >= 3.9`）。
+- 本机 `python` 是商店占位符，一律用 `py -3.12`（3.8 也在，但本项目 `requires-python >= 3.12`）。
 - 本机有 Node 24 与 7-Zip 25.01、`unzip`（Git for Windows 自带）；`7z` 不在 PATH，在 `C:\Program Files\7-Zip\7z.exe`。
 - 跑脚本建议 `PYTHONUTF8=1`（CI 也设）；中文输出不要依赖控制台编码。
 - **禁止**：把"未执行"写成已完成；在 tag 之后改交付面（`src/` `scripts/` `data/fixtures`）。

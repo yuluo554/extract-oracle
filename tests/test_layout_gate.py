@@ -18,7 +18,10 @@ REPO = Path(__file__).resolve().parent.parent
 
 
 def _write_lf(path: Path, text: str) -> None:
-    """显式 LF 写盘，**Python 3.9 兼容**（`write_text` 的 `newline=` 参数是 3.10 才加的）。"""
+    """显式 LF 写盘（Windows 上 `write_text` 默认写 CRLF，被检查的 `.md` 口径是 LF）。
+
+    写法沿用 M6 的 3.9 版守门抓出来的 `open(..., newline="\n")`（`plan/05` §五 U27）；
+    floor 现为 3.12，本写法照旧。"""
 
     with open(path, "w", encoding="utf-8", newline="\n") as handle:
         handle.write(text)

@@ -15,6 +15,11 @@
   P7 工作树干净（`--allow-dirty` 时降级为报告项）
   P8 **推送包自证**：`git bundle create --all` + `git bundle verify` 必须通过
      —— 这一条证明"远端要收的那些 ref 与对象全都在本地、且包自洽"，是"可推"最硬的本地证据。
+  P9 **仓库元数据与项目定位一致**（D2）：GitHub `description` 必须含 README 首行的产品定位短语。
+     **默认 SKIP、只有 `--online` 才启用** —— 它要调 `gh api`（**网络**），而本项目有「零网络」硬纪律
+     （`data/README.md` / `AGENTS.md` 硬性第 2 条）。把网络判据放进默认路径会破坏那条纪律，
+     所以做成"显式开一个开关才联网"，且 `--online` 下 `gh` 缺失 / 网络不可达一律报 **SKIP**（环境缺失），
+     不报 PASS 也不报 FAIL —— 与退出码 3 的"环境缺失"语义同族。
 
 退出码：0 全绿 / 1 有 FAIL / 2 用法错误 / 3 环境缺失（非 git 工作树、无 git 可执行）。
 **刻意不进 CI**：P7/P8 依赖工作树状态与完整历史，浅克隆下会翻转（判据的环境敏感性）。
@@ -24,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -233,7 +239,79 @@ def check_pushable_bundle() -> None:
         )
 
 
-def run(allow_dirty: bool) -> int:
+#: README 首行的产品名 / 定位短语的分隔符（本仓写 `# extract-oracle · 归档提取预言机`）。
+README_TITLE_SEP = "·"
+#: 远端仓库的 owner/name（用于 `gh api repos/<slug>`）。
+REPO_SLUG = "yuluo554/extract-oracle"
+
+
+def readme_identity_phrases() -> list[str]:
+    """从 README 首行机器抽出「产品名」与「定位短语」（**不手抄**，防脱钩）。
+
+    这就是 GitHub 搜索结果里用户看到的第一句话该表达的意思 —— 所以它必须与远端 `description` 一致。
+    """
+
+    for line in (ROOT / "README.md").read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("#"):
+            continue
+        title = stripped.lstrip("#").strip()
+        head, _, tail = title.partition(README_TITLE_SEP)
+        return [p.strip() for p in (head, tail) if p.strip()]
+    raise AssertionError("README 里找不到 `#` 开头的首行标题")
+
+
+def missing_identity_phrases(description: str, phrases: list[str]) -> list[str]:
+    """返回 `description` 里**缺**的定位短语（空 = 一致）。纯函数，供负控直接喂合成串。
+
+    大小写不敏感：产品名 `extract-oracle` 与 `Extract-oracle` 是同一个词（D2 的缺陷**不是**
+    大小写，而是整句定位是另一个产品）——判据要抓的是**意思**，不是首字母大小写。
+    """
+
+    haystack = description.lower()
+    return [p for p in phrases if p.lower() not in haystack]
+
+
+def check_repo_metadata_online() -> None:
+    """P9（**默认 SKIP，`--online` 才跑**）：GitHub `description` 必须承载 README 首行的定位短语。
+
+    为什么这条值得有（D2 的诊断结论）：GitHub `description` 是搜索结果里用户看到的第一句话，
+    而本项目原先那串（"抽取结果的可复算真值判定"）描述的是**另一个产品**。
+    实测**没有任何门**检查它（`grep -rn "description" tools/check_publish_ready.py` 当时 0 命中），
+    所以这类偏差永远不会被自动化发现 —— 它只会在"被人看见"时才被发现。
+
+    **联网纪律**：本判据调 `gh api`（网络）。默认路径**不跑**它，`--online` 才启用；
+    且 `--online` 下 `gh` 缺失 / 未登录 / 网络不可达一律报 **SKIP（环境缺失）**，
+    不报 PASS、也不报 FAIL —— "这台机器查不了"与"元数据不一致"是两件事。
+    """
+
+    if shutil.which("gh") is None:
+        add("P9.REPO_DESCRIPTION", True, "未找到 gh（环境缺失，未核实远端元数据）", skip=True)
+        return
+    probe = subprocess.run(
+        ["gh", "api", f"repos/{REPO_SLUG}", "--jq", ".description"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    if probe.returncode != 0:
+        detail = (probe.stderr or "gh api 失败").strip().splitlines()[0][:160]
+        add("P9.REPO_DESCRIPTION", True, f"gh api 不可用（环境缺失，未核实远端元数据）: {detail}", skip=True)
+        return
+    description = probe.stdout.strip()
+    phrases = readme_identity_phrases()
+    missing = missing_identity_phrases(description, phrases)
+    add(
+        "P9.REPO_DESCRIPTION",
+        not missing,
+        f"description 缺 README 首行定位短语: {missing}；实得 {description!r}"
+        if missing
+        else f"description 与 README 首行一致（含 {len(phrases)} 个定位短语）",
+    )
+
+
+def run(allow_dirty: bool, online: bool) -> int:
     if not is_git_tree():
         print("发布就绪门：当前目录不是 git 工作树（SKIP 全部判据）")
         return 3
@@ -258,6 +336,15 @@ def run(allow_dirty: bool) -> int:
         except Exception as exc:  # 门永不崩
             add(getattr(step, "__name__", "step"), False, f"{exc.__class__.__name__}: {exc}")
 
+    # P9 是**网络判据**：默认路径不跑它，只有 `--online` 才启用（"零网络"硬纪律）。
+    if online:
+        try:
+            check_repo_metadata_online()
+        except Exception as exc:  # 门永不崩
+            add("P9.REPO_DESCRIPTION", False, f"{exc.__class__.__name__}: {exc}")
+    else:
+        add("P9.REPO_DESCRIPTION", True, "未启用（离线；用 --online 核实远端元数据）", skip=True)
+
     failed = [c for c in CHECKS if c[1] == "FAIL"]
     print("发布就绪门（可上传性） · 不判是否已发布")
     print("=" * 56)
@@ -272,8 +359,13 @@ def run(allow_dirty: bool) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="check_publish_ready")
     parser.add_argument("--allow-dirty", action="store_true", help="允许未提交改动（降级为 WARN）")
+    parser.add_argument(
+        "--online",
+        action="store_true",
+        help="启用联网判据 P9（核对 GitHub description 与 README 首行一致）；默认离线、不联网",
+    )
     args = parser.parse_args(argv)
-    return run(args.allow_dirty)
+    return run(args.allow_dirty, args.online)
 
 
 if __name__ == "__main__":

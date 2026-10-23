@@ -117,6 +117,39 @@
 | 未验证项回填 | `plan/05` §五 **U1**（已实跑，首轮红 → 逐格定性在 §5.1）、**U9**（Ubuntu/macOS 六格已实跑）、**U10**（3.9 通道已实跑，且**证伪过**两处写法）——三条全部关闭 | `plan/05` §五 同名行 |
 | POST_TAG 声明 | "tag 之后只有追加类提交，`git log --oneline v1.0.0..HEAD` 可逐条核对；交付面（`src/` `scripts/` `data/fixtures`）**零差异**"——本笔提交即首条追加（`plan/` 与 `docs/` 面），交付面按 `git -c core.quotepath=false diff --name-only v1.0.0..HEAD -- src/ scripts/ data/fixtures` **为空** | 见左列命令 |
 
+### 二.2 v1.0.1 维护发布（2026-10-23）
+
+> **为什么发 1.0.1**：v1.0.0 发布后发现三件事落在**不同层**，判据沿用 `plan/RELEASE-M6.md:157`
+> 的「缺陷落在哪一层决定要不要重发」——
+> ① **floor 已 EOL**（`requires-python = ">=3.9"`，而 3.9 于 2025-10 停止支持）→ **元数据层**；
+> ② **`tools/` 的 3.9 缺陷**（`gen_fixtures.py` / `fetch_upcase.py` 的写盘路径在 3.9 及以下 `TypeError`）
+>    **已在 v1.0.0 的源码包里**，而「已发布窗口」纪律**禁止重打 v1.0.0**（sha256 已登记）→ 这是
+>    **只有发新版本才能解**的一环（用户下载 v1.0.0 源码包仍会踩到）；
+> ③ **GitHub description** 描述的是另一个产品（D2）→ **远端元数据层**，与本仓字节无关。
+> 三件事合起来 = 一次维护发布；**交付面相对 v1.0.0 只差 `src/extract_oracle/__init__.py` 一处字面值**
+> （`__version__ = "1.0.0"` → `"1.0.1"`），`scripts/` 与 `data/fixtures/` **逐字节零差异** ——
+> 升版本号本身就是"交付面动了一处"，这正是发新版的判据，不是纪律破裂。
+>
+> **本节在 v1.0.1 的 tag 树内是占位骨架**（同 §二的规则）：tag OID / 新附件 sha256 写在 v1.0.1 的
+> **tag 之后**追加提交里。当前你读到的这一版是 **tag 之前**落盘的骨架。
+
+| 项 | 值 | 核对命令 |
+|---|---|---|
+| 版本 | `1.0.1`（`src/extract_oracle/__init__.py`，唯一真源） | `py -3.12 -c "import sys;sys.path.insert(0,'src');import extract_oracle;print(extract_oracle.__version__)"` |
+| tag 名 / 类型 | `v1.0.1` / annotated | `git cat-file -t v1.0.1` |
+| tag 对象 OID | _（tag 后追加提交登记）_ | `git rev-parse v1.0.1` |
+| tag 指向的 commit | _（tag 后追加提交登记）_ | `git rev-parse v1.0.1^{commit}` |
+| 交付面相对 v1.0.0 | **只差 `src/extract_oracle/__init__.py` 的 `__version__` 一处字面值**；`scripts/` 与 `data/fixtures/` 零差异 | `git -c core.quotepath=false diff --stat v1.0.0..v1.0.1 -- src/ scripts/ data/fixtures/` |
+| 附件清单与 sha256 | _（tag 后追加提交登记）_ | `gh release download v1.0.1` + `sha256sum` |
+| D1 关闭（floor） | `requires-python = ">=3.12"`；CI matrix `python: ["3.12","3.13"]`；`tomli` dev 条件依赖已删 | `grep -n "requires-python" pyproject.toml` / `grep -C1 "python:" .github/workflows/ci.yml` |
+| D2 关闭（description） | 改成与 README 首行一致的定位；新增 `check_publish_ready.py` 的 **P9.REPO_DESCRIPTION**（默认 SKIP、`--online` 才联网） | `gh api repos/yuluo554/extract-oracle --jq .description` / `py -3.12 tools/check_publish_ready.py --online` |
+| D3（tag 树 M6 ⬜） | **用户裁定「只登记不修」**：不回填 v1.0.0 的 tag 树（违反「不重打 tag」纪律）。v1.0.1 的 tag 树里 M6 是 ✅（沿用 HEAD 的 `a8f8d22` 回填），但 **v1.0.0 的 tag 树仍是 ⬜** | `git show v1.0.0:README.md \| grep "^\\| M6"` / `git show v1.0.1:README.md \| grep "^\\| M6"` |
+| D6 关闭（`tools/` 3.9 缺陷） | v1.0.1 的 sdist 里 `tools/gen_fixtures.py` 的写盘路径不再 `TypeError`（真值写盘改用 `open(..., newline="\n")`） | 解包新 sdist → `grep -n "write_text" tools/gen_fixtures.py`（0 命中 `newline=`）/ `py -3.8 -X utf8 tools/gen_fixtures.py --out <tmp>`（不再 TypeError） |
+| D5 关闭（门扫 `update/`） | `check_desensitized.py` 的 `SKIP_DIRS` 加 `"update"`；`.gitignore` 加 `update/`（两条一起才消掉脱敏门与 `P7.CLEAN_TREE` 两个假红） | `grep -n '"update"' tools/check_desensitized.py` |
+| D7 登记（`-qq` 吞汇总行） | **不改**（`addopts = "-q"` 是既有口径）；只在纪律里写明「要贴汇总行就不带 `-q`」 | `py -3.12 -m pytest`（不带 `-q`） |
+| 测试 | **488 passed**（v1.0.0 的 482 + 新增 6 条：`test_py39_compat.py` 重写后的 5 条 + `test_license_metadata.py` 新增 1 条 EOL 负控） | `py -3.12 -m pytest`（不带 `-q`） |
+| CI run 台账（v1.0.1） | _（tag 后追加提交登记）_ | `gh run list --json databaseId,headSha,event,headBranch,conclusion` |
+
 ---
 
 ## 三、阶段 7 出口门覆盖对账

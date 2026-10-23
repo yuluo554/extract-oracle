@@ -6,9 +6,9 @@
 - 交付形态（唯一）：**单文件可执行 + 纯本地 CLI**（只读归档、零网络、零解压到磁盘、零运行时依赖）
 - 定位宣言："现有工具只做**单条规则检查**或**字段转储**，没有一个输出**谁会写出什么名字、谁覆盖谁、哪个工具会拒绝**。本工具是**提取结果预言机**：输入一个 ZIP/TAR，逐条目预言它在 {Windows 资源管理器, Info-ZIP unzip, 7-Zip, libarchive, Python zipfile, macOS Finder, Linux} 上会变成什么名字、是否被覆盖、是否应用层不可见、是否被拒绝。**提取预言机不是体检器。**"
 - 基准日：**2026-10-21**；代理实际检索窗口 **2026-10-19T18:35Z–19:10Z**（`data/README.md` §1 已原样记录）
-- 当前状态：**M6 发布完成（项目收尾）**——公开仓 `yuluo554/extract-oracle`，tag **v1.0.0**（annotated）+ Release 附 `extract-oracle.exe` 与源码包；`docs/divergence.md` 定稿（88 格）；`__version__` = **1.0.0**；产物**自带平台语义表**；CI **8/8 job 全绿**（三平台 × 3.9/3.12 + 产物 job）。**M6 是最后一个里程碑，无下一棒交接单**
-- **可上传状态**：发布就绪门（`py -3.12 tools/check_publish_ready.py`）8 条判据全绿，含 `git bundle verify` 推送包自证 → **仓库本身现在就能推**；对外动作序列（建仓 → 首推 → tag → Release）见 `plan/05` §四，**已获用户显式确认后执行**
-- CI 状态：**已实跑并全绿**（2026-10-21，共十轮，首跑红照录）——首推首轮红（五组缺陷，`plan/05` §5.1）、复跑轮 7/8（§5.2）、收尾轮 SIGPIPE 假红（§5.3），其后四轮逐条修完，最后一轮 `a0fa03d` **8/8 全绿**；逐轮 run 台账与终止符在 `plan/RELEASE-M6.md` §二
+- 当前状态：**M6 发布完成（项目收尾）+ v1.0.1 维护发布**——公开仓 `yuluo554/extract-oracle`，tag **v1.0.0**（annotated）+ Release 附 `extract-oracle.exe` 与源码包；**v1.0.1** 为维护发布（floor 3.9→3.12、`tools/` 的 3.9 缺陷进 tag 树、GitHub description 修正；交付面相对 v1.0.0 **只差 `src/extract_oracle/__init__.py` 的 `__version__` 一处字面值**，`scripts/` 与 `data/fixtures/` 零差异）；`docs/divergence.md` 定稿（88 格）；`__version__` = **1.0.1**；产物**自带平台语义表**；CI **8/8 job 全绿**（原口径三平台 × 3.9/3.12 + 产物 job；matrix 已抬到 3.12/3.13，见 CI 状态行）。**M6 是最后一个里程碑，无下一棒交接单**
+- **可上传状态**：发布就绪门（`py -3.12 tools/check_publish_ready.py`）**9 条判据**（P1–P9；P9 默认 SKIP、`--online` 才联网核对 description）全绿，含 `git bundle verify` 推送包自证 → **仓库本身现在就能推**；对外动作序列（建仓 → 首推 → tag → Release）见 `plan/05` §四，**已获用户显式确认后执行**
+- CI 状态：**已实跑并全绿**（2026-10-21，共十轮，首跑红照录）——首推首轮红（五组缺陷，`plan/05` §5.1）、复跑轮 7/8（§5.2）、收尾轮 SIGPIPE 假红（§5.3），其后四轮逐条修完，最后一轮 `a0fa03d` **8/8 全绿**；逐轮 run 台账与终止符在 `plan/RELEASE-M6.md` §二。**矩阵于 2026-10-23 从 `[3.9,3.12]` 抬到 `[3.12,3.13]`**——新矩阵的首条 run 结论看 GitHub 上对应 sha，不在此声明
 
 ---
 
@@ -98,7 +98,7 @@
 | 四工具分歧对照 | 本机实测命令与输出 | `data/tool-matrix/*.json`（中间产物）→ `docs/divergence.md` | 每格附实测命令与输出节选；可重跑脚本重跑一致 | ✅ M6 定稿（88 格逐格命令 + 退出码 + 落盘名 + 输出节选；`probe_tools.py --check` 逐字节一致；含两处实测收窄与两处平台/版本注记） |
 | fixture 生成器 | `struct.pack` 程序化构造 | `tools/gen_fixtures.py` | 重跑逐字节一致；不含真实用户文件 | ✅ 22/22 份（M1） |
 | 方法论装订 | `AGENTS.md` + 布局门 + 脱敏门 + `plan/00` 顶部一行 | `tools/check_sprint_layout.py` / `tools/check_desensitized.py` | 布局门全绿 + 变异逐组变红（`tests/test_layout_gate.py`） | ✅ |
-| **可上传 GitHub** | 仓库结构 + 门 + 建仓脚本 | `tools/check_publish_ready.py`（P1–P8）/ `tools/bootstrap_remote.py` | 发布就绪门全绿（含 `git bundle verify` 推送包自证）+ 11 组变异逐组变红 | ✅ M6：**已建仓并发布**（`yuluo554/extract-oracle` 公开仓；tag `v1.0.0` + Release 附两件；run 台账与附件 sha256 见发布留档 §二） |
+| **可上传 GitHub** | 仓库结构 + 门 + 建仓脚本 | `tools/check_publish_ready.py`（P1–P9；P9 默认 SKIP、`--online` 联网） / `tools/bootstrap_remote.py` | 发布就绪门全绿（含 `git bundle verify` 推送包自证）+ 变异逐组变红 | ✅ M6：**已建仓并发布**（`yuluo554/extract-oracle` 公开仓；tag `v1.0.0` + Release 附两件；v1.0.1 维护发布；run 台账与附件 sha256 见发布留档 §二） |
 
 ---
 

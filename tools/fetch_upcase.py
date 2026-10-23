@@ -296,7 +296,7 @@ def main(argv: list[str] | None = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "ntfs-upcase.bin").write_bytes(table)
     text = json.dumps(meta, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
-    # 显式 LF 写盘、**Python 3.9 兼容**（`write_text(newline=…)` 是 3.10 才加的签名）。
+    # 显式 LF 写盘（M6 的 3.9 版守门抓出的写法；floor 现为 3.12，写法照旧——改动无收益）。
     with open(out_dir / "meta.json", "w", encoding="utf-8", newline="\n") as handle:
         handle.write(text)
 

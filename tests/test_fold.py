@@ -37,13 +37,12 @@ REPO = Path(__file__).resolve().parent.parent
 
 
 def _write_lf(path: Path, text: str) -> None:
-    """显式 LF 写盘，**Python 3.9 兼容**。
+    """显式 LF 写盘（Windows 上 `write_text` 默认写 CRLF，而 fixture 口径是 LF）。
 
-    为什么不用 `Path.write_text` 的 `newline=` 参数（这里刻意不写出完整调用式）：
-    那个参数是 **3.10** 才加的，而本项目
-    `requires-python >= 3.9` —— CI 首推首跑实测：3.9 通道上 14 条测试报
-    `TypeError: write_text() got an unexpected keyword argument 'newline'`。
-    判别 = **"我用的是不是 3.9 就有的写法？"**（`plan/05` §五 U10 从"未实跑"变成"实跑结论"的那一格）。
+    写法沿用 M6 的 3.9 版守门抓出的 `open(..., newline="\\n")`：CI 首推首跑实测，
+    `Path.write_text(..., newline=…)` 在当时的 floor 3.9 上让 14 条测试报 `TypeError`
+    （`plan/05` §五 U10）。floor 现为 3.12、那条判据已换成"禁高于 floor 的 API"
+    （`tests/test_py39_compat.py`），**本写法照旧**——改动它没有收益，风险是 fixture 口径变 CRLF。
     """
 
     with open(path, "w", encoding="utf-8", newline="\n") as handle:

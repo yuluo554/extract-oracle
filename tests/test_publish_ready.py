@@ -63,13 +63,10 @@ def _fails(out: str) -> list[str]:
 
 
 def _write_lf(path: Path, text: str) -> None:
-    """显式 LF 写盘，**Python 3.9 兼容**。
+    """显式 LF 写盘（Windows 上 `write_text` 默认写 CRLF，被检查的 `.md` 口径是 LF）。
 
-    为什么不用 `Path.write_text` 的 `newline=` 参数（写在这里会连注释一起被判据扫到，
-    所以刻意不写出完整调用式）：那个参数是 **3.10** 才加的，而本项目
-    `requires-python >= 3.9` —— CI 首推首跑实测：3.9 通道上 14 条测试报
-    `TypeError: write_text() got an unexpected keyword argument 'newline'`。
-    判别 = **"我用的是不是 3.9 就有的写法？"**（这是 `plan/05` §五 U10 从"未实跑"变成"实跑结论"的那一格）。
+    写法沿用 M6 的 3.9 版守门抓出的 `open(..., newline="\\n")`（`plan/05` §五 U10）；
+    floor 现为 3.12，本写法照旧。
     """
 
     with open(path, "w", encoding="utf-8", newline="\n") as handle:
@@ -203,3 +200,79 @@ def test_non_git_tree_returns_environment_missing(tmp_path: Path):
     code, out = _run(root)
     assert code == 3, out
     assert "不是 git 工作树" in out
+
+
+# ── P9.REPO_DESCRIPTION（**联网判据**：默认 SKIP、`--online` 才启用）────────────────────
+
+
+def _load_gate_module():
+    """导入门脚本模块（拿它的纯函数做变异；门脚本不带副作用，import 安全）。"""
+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("_gate_publish_ready", REPO / GATE_REL)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_p9_offline_is_skipped_not_pass(sandbox: Path):
+    """默认（离线）必须报 **SKIP** —— 不许把"没联网核实"写成 PASS（假绿形态）。"""
+
+    code, out = _run(sandbox)
+    assert code == 0, out
+    assert "SKIP  P9.REPO_DESCRIPTION" in out, out
+
+
+def test_p9_online_reports_skip_when_gh_unavailable(sandbox: Path, monkeypatch):
+    """`--online` 下若 `gh` 不可用 → SKIP（环境缺失），**不是 FAIL 也不是 PASS**。
+
+    判据不依赖本机是否真的有 gh：把 PATH 上的 gh 找出来这一步打成 None 即可复现"环境缺失"分支。
+    """
+
+    module = _load_gate_module()
+    module.CHECKS.clear()
+    monkeypatch.setattr(module.shutil, "which", lambda _name: None)
+    module.check_repo_metadata_online()
+    (check_id, kind, _ok, detail) = module.CHECKS[-1]
+    assert check_id == "P9.REPO_DESCRIPTION"
+    assert kind == "SKIP", (kind, detail)
+
+
+def test_p9_phrase_comparator_flags_the_original_wrong_description():
+    """负控（本迭代的靶子）：v1.0.0 的旧 description 必须被判红 —— 它描述的是**另一个产品**。"""
+
+    module = _load_gate_module()
+    phrases = module.readme_identity_phrases()
+    wrong = "Extract-oracle: 抽取结果的可复算真值判定（纯本地 CLI，零第三方依赖）"
+    missing = module.missing_identity_phrases(wrong, phrases)
+    assert "归档提取预言机" in missing, missing
+
+
+def test_p9_phrase_comparator_accepts_the_corrected_description():
+    """正向对照：改后的 description 必须判绿（否则可能只是恒红）。"""
+
+    module = _load_gate_module()
+    phrases = module.readme_identity_phrases()
+    good = (
+        "extract-oracle · 归档提取预言机：输入 ZIP，预言各提取器会写出什么名字、"
+        "谁覆盖谁、谁被拒绝（纯本地 CLI，零第三方依赖）"
+    )
+    assert module.missing_identity_phrases(good, phrases) == []
+
+
+def test_p9_phrase_comparator_is_case_insensitive():
+    """大小写不该造成假红：`Extract-oracle` 与 `extract-oracle` 是同一个词。"""
+
+    module = _load_gate_module()
+    phrases = module.readme_identity_phrases()
+    assert module.missing_identity_phrases("Extract-oracle · 归档提取预言机", phrases) == []
+
+
+def test_p9_phrases_come_from_readme_title_not_hand_copied():
+    """防脱钩：定位短语必须从 README 首行**机器抽出**（改 README 标题就该影响这条门）。"""
+
+    module = _load_gate_module()
+    phrases = module.readme_identity_phrases()
+    assert phrases == ["extract-oracle", "归档提取预言机"], phrases

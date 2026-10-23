@@ -1,6 +1,6 @@
 # extract-oracle · 归档提取预言机
 
-> **Status: v1.0.0 — M6 发布（五模块全部落地：`structure.*` 六条 + `collision.*` 四条 + `accessibility` 三级 + `encoding.*` 推断 + `container.*` 五条 + `budget.*` 两条）**｜方法论：`ai-tool-project-sprint`｜布局门：`py -3.12 tools/check_sprint_layout.py`
+> **Status: v1.0.1 — 维护发布（M6 已完成：五模块全部落地：`structure.*` 六条 + `collision.*` 四条 + `accessibility` 三级 + `encoding.*` 推断 + `container.*` 五条 + `budget.*` 两条）**｜方法论：`ai-tool-project-sprint`｜布局门：`py -3.12 tools/check_sprint_layout.py`
 
 **现有工具只做"单条规则检查"或"字段转储"，没有一个输出"谁会写出什么名字、谁覆盖谁、哪个工具会拒绝"。**
 
@@ -37,7 +37,7 @@
 | M6 | ✅ | 发布（tag v1.0.0 + Release 附产物 + 留档两栏 + `docs/divergence.md` 定稿） |
 
 > 状态副本共 4 处（本表 / `plan/00` 里程碑表 / `plan/00` 承诺-证据台账 / `plan/05` 状态表），任一处单独改动
-> 都会让布局门变红——这是设计如此。CI 状态：**三平台 × Python 3.9/3.12 + 单文件产物 job，8/8 全绿**（2026-10-21；逐轮 run 台账在 `plan/RELEASE-M6.md` §二，含首跑红的照录）。
+> 都会让布局门变红——这是设计如此。CI 状态（M6 实测）：**三平台 × Python 3.9/3.12 + 单文件产物 job，8/8 全绿**（2026-10-21；逐轮 run 台账在 `plan/RELEASE-M6.md` §二，含首跑红的照录）。**该矩阵已于 2026-10-23 抬到 3.12/3.13**——新矩阵的首条 run 见 GitHub 上对应 sha 的结论，不在此处声明。
 
 ## 安装
 
@@ -45,7 +45,7 @@
 py -3.12 -m pip install -e ".[dev]"
 ```
 
-零运行时依赖。Python ≥ 3.9。
+零运行时依赖。Python ≥ 3.12（3.9 已于 **2025-10** EOL；10-23 起下界抬到 3.12）。
 
 ## 用法
 

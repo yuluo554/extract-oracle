@@ -13,9 +13,10 @@ setuptools 弃用，硬期限 **2027-02-18**（实测 setuptools 84.2.1）：
 1. **构建后端下限必须 >=77** —— 否则 pyproject 不生效（旧 setuptools 不认 string 形态）；
 2. **不能保留 `License ::` classifier** —— setuptools>=77 会**硬报错**而不是警告：
    `InvalidConfigError: License classifiers have been superseded by license expressions`；
-3. **requires-python 必须 >=3.9** —— setuptools>=77 自身要求 Python>=3.9
-   （实测 `pip index versions setuptools --python-version 3.8` → LATEST 75.3.4）。
-   这条是把「3.8 上装不到 77」写成机检，防止有人只改 license 不抬 floor 就提交。
+3. **requires-python 必须 >=3.12** —— 两个下界叠加后取更严的那个：① setuptools>=77 自身要求
+   Python>=3.9（实测 `pip index versions setuptools --python-version 3.8` → LATEST 75.3.4）；
+   ② 本项目 2026-10-23 的决定把 floor 从 3.9（**已于 2025-10 EOL**）抬到 3.12。
+   这条是把两个下界一起写成机检，防止有人只改其中一处就提交。
 
 第 5~7 条是**审计函数自身的负控**：喂合成的错误输入，必须报错。没有这组，
 上面的断言只证明「当前文件是对的」，不证明「这个门会红」。
@@ -25,22 +26,26 @@ from __future__ import annotations
 
 import re
 import sys
+import tomllib
 from pathlib import Path
-
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 
+#: floor 下界的机检值。改这个值等于改项目对外的 Python 承诺 —— 与
+#: `tests/test_py39_compat.py`（守"源码里不得出现高于 floor 的 API"）成对。
+REQUIRED_FLOOR = (3, 12)
+
 
 def _load_toml(text):
-    """3.11+ 用 tomllib；更老的解释器上退回 tomli（CI 的 3.9/3.10 腿）。"""
-    try:
-        import tomllib as _t  # py>=3.11
-    except ImportError:  # pragma: no cover - 取决于解释器版本
-        pytest.importorskip("tomli", reason="py<3.11 需要 tomli 才能解析 pyproject")
-        import tomli as _t  # type: ignore[no-redef]
-    return _t.loads(text)
+    """用标准库 `tomllib`（floor 3.12 起它就在标准库里）。
+
+    历史：3.9 通道存在时这里还有一条 `pytest.importorskip("tomli")` 的回退分支
+    （配合 `pyproject` 的 `tomli>=2; python_version < '3.11'` 条件依赖）。
+    floor 抬到 3.12 后该分支**永不成立**、条件依赖也已删除，故一并去掉 —— 死分支留着会
+    让人以为"这个门还支持更老的解释器"。
+    """
+    return tomllib.loads(text)
 
 
 def audit_pyproject(text):
@@ -87,10 +92,10 @@ def audit_pyproject(text):
     m = re.search(r">=\s*(\d+)\.(\d+)", rp)
     if not m:
         problems.append("requires-python 缺失或无法解析：%r" % (rp,))
-    elif (int(m.group(1)), int(m.group(2))) < (3, 9):
+    elif (int(m.group(1)), int(m.group(2))) < REQUIRED_FLOOR:
         problems.append(
-            "requires-python=%r < 3.9，但 setuptools>=77 要求 Python>=3.9"
-            "（实测 3.8 上最高只有 75.3.4）" % (rp,)
+            "requires-python=%r 低于 %d.%d —— 本项目 floor 是 %d.%d（Python 3.9 已于 2025-10 EOL）"
+            % (rp, *REQUIRED_FLOOR, *REQUIRED_FLOOR)
         )
     return problems
 
@@ -117,7 +122,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "x"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE"]
 '''
@@ -147,8 +152,17 @@ def test_auditor_flags_setuptools_below_77():
     assert any("< 77" in p for p in problems), problems
 
 
-def test_auditor_flags_python_below_39():
-    """3.8 + SPDX 是自相矛盾的组合，必须在 pyproject 层面就被判红。"""
-    bad = GOOD.replace('requires-python = ">=3.9"', 'requires-python = ">=3.8"')
+def test_auditor_flags_python_below_floor():
+    """低 floor 与 SPDX 是自相矛盾的组合（3.8 装不到 setuptools>=77），必须在 pyproject 层面判红。"""
+
+    bad = GOOD.replace('requires-python = ">=3.12"', 'requires-python = ">=3.8"')
     problems = audit_pyproject(bad)
-    assert any("< 3.9" in p for p in problems), problems
+    assert any("低于 3.12" in p for p in problems), problems
+
+
+def test_auditor_flags_eol_python_39():
+    """3.9 已 EOL（2025-10），即使它能装 setuptools>=77 也不该再被声明为 floor（本迭代的靶子）。"""
+
+    bad = GOOD.replace('requires-python = ">=3.12"', 'requires-python = ">=3.9"')
+    problems = audit_pyproject(bad)
+    assert any("低于 3.12" in p for p in problems), problems

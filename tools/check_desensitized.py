@@ -25,7 +25,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SELF = "tools/check_desensitized.py"
 
-SKIP_DIRS = {".git", ".tmp", "dist", "dist-release", "node_modules", ".cache", ".venv", "venv", "build", "__pycache__", ".pytest_cache"}
+#: `update/` 是**迭代交接目录**（诊断方只写、执行方续写），不是交付面 —— 它不随仓库分发，
+#: 所以门不扫它（实测：不排除时，往 `update/` 写一条盘符路径会让整仓隐私门 exit 1）。
+SKIP_DIRS = {".git", ".tmp", "dist", "dist-release", "node_modules", ".cache", ".venv", "venv", "build", "__pycache__", ".pytest_cache", "update"}
 SKIP_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".zip", ".gz", ".exe", ".dll", ".pdf", ".woff", ".woff2", ".bin"}
 
 RULES = [
